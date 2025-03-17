@@ -5,7 +5,4 @@
 Notes in Color is a modern MIDI file player and visualizer application with some MIDI controller support.
 
 > [!NOTE]
-> The showcase picture does not represent the current state of the application; it only reflects our goals.
-
-## Progress
-This README is a work-in-progress. The repository is empty for now, but there is work being done locally.
+> This README is a work-in-progress. The repository is empty for now, but there is work being done locally.
