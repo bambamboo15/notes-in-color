@@ -1,5 +1,5 @@
 <p align="center">
-	<img src="SHOWCASE.png" alt="Showcase Picture">
+	<img src="showcase.png" alt="Showcase Picture">
 </p>
 
 Notes in Color is a modern MIDI file player and visualizer application with some MIDI controller support.
