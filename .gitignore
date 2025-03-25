@@ -1,0 +1,28 @@
+# Ignore bin and obj folders
+bin/
+obj/
+
+# User-specific files
+*.user
+*.suo
+*.userosscache
+*.sln.docstates
+
+# .NET Core files
+project.lock.json
+project.fragment.lock.json
+artifacts/
+
+# Ignore vs-specific files
+.vscode/
+.vs/
+
+# Ignore app configuration files
+appsettings.json
+appsettings.*.json
+
+# Ignore NuGet package directory
+packages/
+
+# Ignore WinUI 3 specific files that are automatically generated
+App1.csproj.user
