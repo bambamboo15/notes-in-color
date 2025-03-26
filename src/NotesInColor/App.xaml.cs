@@ -24,7 +24,7 @@ using Windows.ApplicationModel.Activation;
 using Windows.Foundation;
 using Windows.Foundation.Collections;
 
-namespace App1 {
+namespace NotesInColor {
     public partial class App : Application {
         public App() {
             this.InitializeComponent();
