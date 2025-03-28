@@ -11,6 +11,7 @@ using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Runtime.InteropServices.WindowsRuntime;
+using Microsoft.UI.Windowing;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
 using Microsoft.UI.Xaml.Controls.Primitives;
@@ -32,9 +33,19 @@ namespace NotesInColor {
 
         protected override void OnLaunched(Microsoft.UI.Xaml.LaunchActivatedEventArgs args) {
             m_window = new MainWindow();
+
+            Frame mainWindowFrame = (m_window as MainWindow)!.MainWindowFrame;
+            mainWindowFrame.NavigationFailed += OnNavigationFailed;
+            mainWindowFrame.Navigate(typeof(MainPage), args.Arguments);
+
             m_window.Activate();
         }
 
+        void OnNavigationFailed(object sender, NavigationFailedEventArgs args) {
+            throw new Exception("Failed to load Page " + args.SourcePageType.FullName);
+        }
+
         private Window? m_window;
+        public Window? Window => m_window;
     }
 }

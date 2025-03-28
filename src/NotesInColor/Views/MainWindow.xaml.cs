@@ -36,6 +36,8 @@ namespace NotesInColor {
      * Represents the main window of the application.
      */
     public sealed partial class MainWindow : Window {
+        public Frame MainWindowFrame => frame;
+
         public MainWindow() {
             this.InitializeComponent();
 
@@ -59,39 +61,6 @@ namespace NotesInColor {
                 TitleBarTextBlock.Foreground =
                     (SolidColorBrush)App.Current.Resources["WindowCaptionForeground"];
             }
-        }
-
-        // The "Open MIDI File" button
-        private async void OpenFileButton_Click(object sender, RoutedEventArgs args) {
-            // disable the button
-            Button senderButton = (sender as Button)!;
-            senderButton.IsEnabled = false;
-
-            // open the file picker
-            var openPicker = new Windows.Storage.Pickers.FileOpenPicker();
-
-            // retrieve HWND
-            var hWnd = WinRT.Interop.WindowNative.GetWindowHandle(this);
-
-            // initialize file picker with HWND
-            WinRT.Interop.InitializeWithWindow.Initialize(openPicker, hWnd);
-
-            // set options for file picker
-            //   plan to support .mid, .midi
-            openPicker.ViewMode = PickerViewMode.Thumbnail;
-            openPicker.FileTypeFilter.Add(".midi");
-            openPicker.FileTypeFilter.Add(".mid");
-
-            // open the picker for the user to pick a file
-            var file = await openPicker.PickSingleFileAsync();
-            if (file != null) {
-                // picked a file
-            } else {
-                // operation cancelled
-            }
-
-            // enable the button
-            senderButton.IsEnabled = true;
         }
     }
 }

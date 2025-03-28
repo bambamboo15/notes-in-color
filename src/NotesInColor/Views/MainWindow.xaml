@@ -13,7 +13,6 @@
         <!-- What do the rows look like? -->
         <Grid.RowDefinitions>
             <RowDefinition Height="Auto" />
-            <RowDefinition Height="Auto" />
             <RowDefinition Height="*" />
         </Grid.RowDefinitions>
         
@@ -36,94 +35,8 @@
                    VerticalAlignment="Center"
                    Margin="31,0,0,0" />
         </Grid>
-
-        <!-- The main bar of the application -->
-        <StackPanel VerticalAlignment="Top" Margin="0,0,0,8" Grid.Row="1">
-            <Grid>
-                <TextBlock HorizontalAlignment="Left"
-                           VerticalAlignment="Top"
-                           FontSize="24"
-                           FontWeight="SemiBold"
-                           Margin="24,12,0,0">Potential Song Name</TextBlock>
-                <Grid HorizontalAlignment="Center">
-                    <Grid.RowDefinitions>
-                        <RowDefinition Height="38" />
-                        <RowDefinition Height="Auto" />
-                    </Grid.RowDefinitions>
-                    <Grid HorizontalAlignment="Center"
-                          Grid.Row="0">
-                        <Grid.Resources>
-                            <ResourceDictionary>
-                                <SolidColorBrush x:Key="ButtonBackground" Color="Transparent" />
-                                <SolidColorBrush x:Key="ButtonBorderBrush" Color="Transparent" />
-                            </ResourceDictionary>
-                        </Grid.Resources>
-                        <Grid.ColumnDefinitions>
-                            <ColumnDefinition Width="Auto"></ColumnDefinition>
-                            <ColumnDefinition Width="Auto"></ColumnDefinition>
-                            <ColumnDefinition Width="Auto"></ColumnDefinition>
-                        </Grid.ColumnDefinitions>
-                        <Button ToolTipService.ToolTip="Backward 5 seconds" Width="48"
-                                      Grid.Column="0">
-                            <FontIcon FontFamily="Segoe Fluent Icons" Glyph="&#xF8AC;" />
-                        </Button>
-                        <Button ToolTipService.ToolTip="Play" Width="48"
-                                      Grid.Column="1">
-                            <FontIcon FontFamily="Segoe Fluent Icons" Glyph="&#xF5B0;" />
-                        </Button>
-                        <Button ToolTipService.ToolTip="Backward 5 seconds" Width="48"
-                                      Grid.Column="2">
-                            <FontIcon FontFamily="Segoe Fluent Icons" Glyph="&#xF8AD;" />
-                        </Button>
-                    </Grid>
-                    <Slider HorizontalAlignment="Center"
-                            Width="500"
-                            Margin="0"
-                            IsThumbToolTipEnabled="False"
-                            Grid.Row="1">
-                        <!--
-                            <Slider.Resources>
-                                <ResourceDictionary>
-                                    <SolidColorBrush x:Key="SliderThumbBackground" Color="Red"/>
-                                    <SolidColorBrush x:Key="SliderThumbBackgroundPointerOver" Color="Red"/>
-                                    <SolidColorBrush x:Key="SliderThumbBackgroundPressed" Color="Red"/>
-                                    <SolidColorBrush x:Key="SliderTrackValueFill" Color="Red"/>
-                                    <SolidColorBrush x:Key="SliderTrackValueFillPointerOver" Color="Red"/>
-                                    <SolidColorBrush x:Key="SliderTrackValueFillPressed" Color="Red"/>
-                                </ResourceDictionary>
-                            </Slider.Resources>
-                        -->
-                    </Slider>
-                </Grid>
-                <CommandBar Background="Transparent"
-                            IsOpen="False"
-                            DefaultLabelPosition="Collapsed"
-                            HorizontalAlignment="Right"
-                            VerticalAlignment="Top"
-                            Margin="8">
-                    <CommandBar.Resources>
-                        <SolidColorBrush x:Key="CommandBarBackgroundOpen" Color="Transparent"/>
-                        <SolidColorBrush x:Key="CommandBarBorderBrushOpen" Color="Transparent"/>
-                    </CommandBar.Resources>
-                    <AppBarButton Icon="Add" Width="48"
-                                  ToolTipService.ToolTip="Open a MIDI File"
-                                  Click="OpenFileButton_Click" />
-                    <AppBarToggleButton Icon="Keyboard" Width="48"
-                                  ToolTipService.ToolTip="Toggle Practice Mode" />
-                    <CommandBar.SecondaryCommands>
-                        <AppBarButton Icon="Setting" Label="Settings">
-                            <AppBarButton.KeyboardAccelerators>
-                                <KeyboardAccelerator Modifiers="Control" Key="I" />
-                            </AppBarButton.KeyboardAccelerators>
-                        </AppBarButton>
-                    </CommandBar.SecondaryCommands>
-                </CommandBar>
-            </Grid>
-        </StackPanel>
         
-        <!-- The render -->
-        <Grid Grid.Row="2">
-            <local:RendererControl x:Name="rendererControl" />
-        </Grid>
+        <!-- Arbitrary page -->
+        <Frame x:Name="frame" Grid.Row="1" />
     </Grid>
 </Window>
