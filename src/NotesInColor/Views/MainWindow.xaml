@@ -38,7 +38,7 @@
         </Grid>
 
         <!-- The main bar of the application -->
-        <StackPanel VerticalAlignment="Top" Margin="0,0,0,0" Grid.Row="1">
+        <StackPanel VerticalAlignment="Top" Margin="0,0,0,8" Grid.Row="1">
             <Grid>
                 <TextBlock HorizontalAlignment="Left"
                            VerticalAlignment="Top"
@@ -107,13 +107,13 @@
                     </CommandBar.Resources>
                     <AppBarButton Icon="Add" Width="48"
                                   ToolTipService.ToolTip="Open a MIDI File"
-                                  Click="OpenFileButton_Click"/>
+                                  Click="OpenFileButton_Click" />
                     <AppBarToggleButton Icon="Keyboard" Width="48"
-                                  ToolTipService.ToolTip="Toggle Practice Mode"/>
+                                  ToolTipService.ToolTip="Toggle Practice Mode" />
                     <CommandBar.SecondaryCommands>
                         <AppBarButton Icon="Setting" Label="Settings">
                             <AppBarButton.KeyboardAccelerators>
-                                <KeyboardAccelerator Modifiers="Control" Key="I"/>
+                                <KeyboardAccelerator Modifiers="Control" Key="I" />
                             </AppBarButton.KeyboardAccelerators>
                         </AppBarButton>
                     </CommandBar.SecondaryCommands>
@@ -123,11 +123,7 @@
         
         <!-- The render -->
         <Grid Grid.Row="2">
-            <Border Background="Black" Grid.Row="2">
-                <SwapChainPanel x:Name="Render"
-                    HorizontalAlignment="Stretch"
-                    VerticalAlignment="Stretch"/>
-            </Border>
+            <local:RendererControl x:Name="rendererControl" />
         </Grid>
     </Grid>
 </Window>

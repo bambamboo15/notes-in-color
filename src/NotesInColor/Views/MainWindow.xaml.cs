@@ -32,6 +32,9 @@ using Windows.Storage.Pickers;
 using WinUIEx;
 
 namespace NotesInColor {
+    /**
+     * Represents the main window of the application.
+     */
     public sealed partial class MainWindow : Window {
         public MainWindow() {
             this.InitializeComponent();
@@ -39,13 +42,13 @@ namespace NotesInColor {
             this.SystemBackdrop = new MicaBackdrop() { Kind = MicaKind.Base };
             this.ExtendsContentIntoTitleBar = true;
 
-            this.Activated += MainWindow_Activated;
-
-            var manager = WinUIEx.WindowManager.Get(this);
+            var manager = WindowManager.Get(this);
             manager.Width = 1200;
             manager.Height = 800;
             manager.MinWidth = 1200;
             manager.MinHeight = 800;
+
+            this.Activated += MainWindow_Activated;
         }
 
         private void MainWindow_Activated(object sender, WindowActivatedEventArgs args) {
