@@ -10,12 +10,11 @@ using CommunityToolkit.Mvvm.ComponentModel;
 
 namespace NotesInColor.ViewModel;
 
-public partial class RendererViewModel : ObservableObject {
-    public RendererViewModel() {
+public partial class MainWindowViewModel : ObservableObject {
+    public MainWindowViewModel(
+        MainPageViewModel mainPageViewModel,
+        SettingsPageViewModel settingsPageViewModel
+    ) {
         // ...
     }
-
-    public void RenderEverything() {
-        // ...
-    }
-};
+}

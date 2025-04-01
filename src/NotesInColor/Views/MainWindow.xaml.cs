@@ -30,12 +30,15 @@ using System.Runtime.InteropServices;
 using System.Threading;
 using Windows.Storage.Pickers;
 using WinUIEx;
+using NotesInColor.ViewModel;
+using Microsoft.Extensions.DependencyInjection;
 
 namespace NotesInColor {
     /**
      * Represents the main window of the application.
      */
     public sealed partial class MainWindow : Window {
+        public MainWindowViewModel ViewModel { get; }
         public Frame MainWindowFrame => frame;
 
         public MainWindow() {
@@ -51,6 +54,8 @@ namespace NotesInColor {
             manager.MinHeight = 800;
 
             this.Activated += MainWindow_Activated;
+
+            ViewModel = App.Current.Services.GetService<MainWindowViewModel>()!;
         }
 
         private void MainWindow_Activated(object sender, WindowActivatedEventArgs args) {

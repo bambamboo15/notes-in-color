@@ -24,12 +24,34 @@ using Windows.ApplicationModel;
 using Windows.ApplicationModel.Activation;
 using Windows.Foundation;
 using Windows.Foundation.Collections;
+using CommunityToolkit.Mvvm.DependencyInjection;
+using NotesInColor.ViewModel;
+using Microsoft.Extensions.DependencyInjection;
 
 namespace NotesInColor {
-    public partial class App : Application {
+    public sealed partial class App : Application {
+        public new static App Current => (App)Application.Current;
+        public IServiceProvider Services { get; }
+
         public App() {
             this.InitializeComponent();
+
+            Services = ConfigureServices();
         }
+
+        private static IServiceProvider ConfigureServices() {
+            var services = new ServiceCollection();
+
+            services.AddSingleton<MainWindowViewModel>();
+            services.AddSingleton<MainPageViewModel>();
+            services.AddSingleton<RendererViewModel>();
+            services.AddSingleton<SettingsPageViewModel>();
+
+            return services.BuildServiceProvider();
+        }
+
+        public static T? ObtainService<T>() =>
+            Current.Services.GetService<T>();
 
         protected override void OnLaunched(Microsoft.UI.Xaml.LaunchActivatedEventArgs args) {
             m_window = new MainWindow();

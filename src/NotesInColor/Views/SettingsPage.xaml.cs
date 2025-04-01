@@ -13,6 +13,7 @@ using Microsoft.UI.Xaml.Data;
 using Microsoft.UI.Xaml.Input;
 using Microsoft.UI.Xaml.Media;
 using Microsoft.UI.Xaml.Navigation;
+using NotesInColor.ViewModel;
 using System;
 using System.Collections.Generic;
 using System.IO;
@@ -20,6 +21,7 @@ using System.Linq;
 using System.Runtime.InteropServices.WindowsRuntime;
 using Windows.Foundation;
 using Windows.Foundation.Collections;
+using Microsoft.Extensions.DependencyInjection;
 
 namespace NotesInColor {
     /**
@@ -28,6 +30,7 @@ namespace NotesInColor {
     public sealed partial class SettingsPage : Page {
         public SettingsPage() {
             this.InitializeComponent();
+            this.DataContext = App.Current.Services.GetService<SettingsPageViewModel>();
         }
     }
 }

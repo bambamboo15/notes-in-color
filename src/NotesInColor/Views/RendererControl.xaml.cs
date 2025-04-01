@@ -35,31 +35,35 @@ using Windows.UI;
 using System.Numerics;
 using Microsoft.Graphics.Canvas;
 using NotesInColor.ViewModel;
+using Microsoft.Extensions.DependencyInjection;
 
 namespace NotesInColor {
     /**
-     * This manages the renderer UI (the visualization) of the
-     * main screen, which includes displaying notes and the piano
-     * correctly, but does nothing else.
+     * This manages the rendering of the main screen, which includes
+     * displaying notes and the piano correctly.
+     * 
+     * This class kind of violates the MVVM design pattern because
+     * it takes care of what is being rendered. So then, what should
+     * the View take care of? What about the ViewModel? What about
+     * the Model?
+     * 
+     * This is a very difficult philosophical question. The below code
+     * is an attempt to answer this.
      */
     public sealed partial class RendererControl : UserControl {
-        private RendererViewModel _rendererViewModel;
+        public RendererViewModel ViewModel { get; }
 
         public RendererControl() {
             this.InitializeComponent();
-
-            _rendererViewModel = new RendererViewModel();
-            DataContext = _rendererViewModel;
+            ViewModel = App.ObtainService<RendererViewModel>()!;
+            DataContext = ViewModel;
         }
 
-        // NOTE: Only renders a basic piano for testing.
         private void CanvasControl_Draw(CanvasControl sender, CanvasDrawEventArgs args) {
-            CanvasDrawingSession ds = args.DrawingSession;
-
-            DrawNotes(sender, ds);
-            DrawPiano(sender, ds);
+            ViewModel.RenderEverything(); // does nothing
         }
 
+#if FALSE
         private void DrawPiano(CanvasControl sender, CanvasDrawingSession ds) {
             float width = (float)sender.ActualWidth;
             float height = (float)sender.ActualHeight;
@@ -114,5 +118,6 @@ namespace NotesInColor {
                 // NOTE: Do nothing.
             });
         }
+#endif
     }
 }

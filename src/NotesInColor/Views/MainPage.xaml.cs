@@ -14,6 +14,7 @@ using Microsoft.UI.Xaml.Data;
 using Microsoft.UI.Xaml.Input;
 using Microsoft.UI.Xaml.Media;
 using Microsoft.UI.Xaml.Navigation;
+using NotesInColor.ViewModel;
 using System;
 using System.Collections.Generic;
 using System.IO;
@@ -22,11 +23,13 @@ using System.Runtime.InteropServices.WindowsRuntime;
 using Windows.Foundation;
 using Windows.Foundation.Collections;
 using Windows.Storage.Pickers;
+using Microsoft.Extensions.DependencyInjection;
 
 namespace NotesInColor {
     public sealed partial class MainPage : Page {
         public MainPage() {
             this.InitializeComponent();
+            this.DataContext = App.Current.Services.GetService<MainPageViewModel>();
         }
 
         // The "Open MIDI File" button
