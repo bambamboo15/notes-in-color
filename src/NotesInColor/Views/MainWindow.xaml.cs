@@ -41,8 +41,9 @@ namespace NotesInColor {
         public MainWindowViewModel ViewModel { get; }
         public Frame MainWindowFrame => frame;
 
-        public MainWindow() {
+        public MainWindow(MainWindowViewModel mainWindowViewModel) {
             this.InitializeComponent();
+            this.Activated += MainWindow_Activated;
 
             this.SystemBackdrop = new MicaBackdrop() { Kind = MicaKind.Base };
             this.ExtendsContentIntoTitleBar = true;
@@ -53,9 +54,7 @@ namespace NotesInColor {
             manager.MinWidth = 1200;
             manager.MinHeight = 800;
 
-            this.Activated += MainWindow_Activated;
-
-            ViewModel = App.Current.Services.GetService<MainWindowViewModel>()!;
+            ViewModel = mainWindowViewModel;
         }
 
         private void MainWindow_Activated(object sender, WindowActivatedEventArgs args) {

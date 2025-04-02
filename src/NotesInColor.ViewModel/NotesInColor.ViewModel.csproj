@@ -12,6 +12,7 @@
 
   <ItemGroup>
     <ProjectReference Include="..\NotesInColor.Core\NotesInColor.Core.csproj" />
+    <ProjectReference Include="..\NotesInColor.Services\NotesInColor.Services.csproj" />
   </ItemGroup>
 	
 	<PropertyGroup>

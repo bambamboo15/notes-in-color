@@ -24,51 +24,16 @@ using Windows.Foundation;
 using Windows.Foundation.Collections;
 using Windows.Storage.Pickers;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Graphics.Canvas.UI.Xaml;
 
 namespace NotesInColor {
     public sealed partial class MainPage : Page {
+        public readonly MainPageViewModel ViewModel;
+
         public MainPage() {
             this.InitializeComponent();
-            this.DataContext = App.Current.Services.GetService<MainPageViewModel>();
-        }
-
-        // The "Open MIDI File" button
-        private async void OpenFileButton_Click(object sender, RoutedEventArgs args) {
-            // disable the button
-            Button senderButton = (sender as Button)!;
-            senderButton.IsEnabled = false;
-
-            // open the file picker
-            var openPicker = new Windows.Storage.Pickers.FileOpenPicker();
-
-            // retrieve HWND
-            var actualWindow = (App.Current as App)!.Window!;
-            var hWnd = WinRT.Interop.WindowNative.GetWindowHandle(actualWindow);
-
-            // initialize file picker with HWND
-            WinRT.Interop.InitializeWithWindow.Initialize(openPicker, hWnd);
-
-            // set options for file picker
-            //   plan to support .mid, .midi
-            openPicker.ViewMode = PickerViewMode.Thumbnail;
-            openPicker.FileTypeFilter.Add(".midi");
-            openPicker.FileTypeFilter.Add(".mid");
-
-            // open the picker for the user to pick a file
-            var file = await openPicker.PickSingleFileAsync();
-            if (file != null) {
-                // picked a file
-            } else {
-                // operation cancelled
-            }
-
-            // enable the button
-            senderButton.IsEnabled = true;
-        }
-
-        // Open settings
-        private void OpenSettings_Click(object sender, RoutedEventArgs args) {
-            Frame.Navigate(typeof(SettingsPage));
+            ViewModel = App.Current.Services.GetRequiredService<MainPageViewModel>(); // anti-pattern :(
+            DataContext = ViewModel;
         }
     }
 }

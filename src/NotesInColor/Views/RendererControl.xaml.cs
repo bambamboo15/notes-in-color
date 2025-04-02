@@ -39,24 +39,14 @@ using Microsoft.Extensions.DependencyInjection;
 
 namespace NotesInColor {
     /**
-     * This manages the rendering of the main screen, which includes
-     * displaying notes and the piano correctly.
-     * 
-     * This class kind of violates the MVVM design pattern because
-     * it takes care of what is being rendered. So then, what should
-     * the View take care of? What about the ViewModel? What about
-     * the Model?
-     * 
-     * This is a very difficult philosophical question. The below code
-     * is an attempt to answer this.
+     * What did I write here?
      */
     public sealed partial class RendererControl : UserControl {
         public RendererViewModel ViewModel { get; }
 
         public RendererControl() {
             this.InitializeComponent();
-            ViewModel = App.ObtainService<RendererViewModel>()!;
-            DataContext = ViewModel;
+            ViewModel = App.Current.Services.GetService<RendererViewModel>()!;
         }
 
         private void CanvasControl_Draw(CanvasControl sender, CanvasDrawEventArgs args) {

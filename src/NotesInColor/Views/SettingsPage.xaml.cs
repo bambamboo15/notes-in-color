@@ -28,9 +28,12 @@ namespace NotesInColor {
      * This is the settings page.
      */
     public sealed partial class SettingsPage : Page {
+        public readonly SettingsPageViewModel ViewModel;
+
         public SettingsPage() {
             this.InitializeComponent();
-            this.DataContext = App.Current.Services.GetService<SettingsPageViewModel>();
+            ViewModel = App.Current.Services.GetRequiredService<SettingsPageViewModel>(); // anti-pattern :(
+            DataContext = ViewModel;
         }
     }
 }

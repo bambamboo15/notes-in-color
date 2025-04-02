@@ -10,8 +10,10 @@ using CommunityToolkit.Mvvm.ComponentModel;
 
 namespace NotesInColor.ViewModel;
 
-public partial class MainPageViewModel : ObservableObject {
-    public MainPageViewModel(RendererViewModel rendererViewModel) {
-        // ...
-    }
+public partial class MainPageViewModel(
+    RendererViewModel rendererViewModel,
+    OpenFileViewModel openFileViewModel
+) : ObservableObject {
+    public OpenFileViewModel OpenFileViewModel { get; } = openFileViewModel;
+    public RendererViewModel RendererViewModel { get; } = rendererViewModel;
 }

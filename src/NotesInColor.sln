@@ -4,10 +4,15 @@ Microsoft Visual Studio Solution File, Format Version 12.00
 VisualStudioVersion = 17.12.35707.178
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "NotesInColor", "NotesInColor\NotesInColor.csproj", "{54A7B02B-0383-4097-B332-AFBE750314D2}"
+	ProjectSection(ProjectDependencies) = postProject
+		{8F3E41FB-EABA-4BB8-8C49-884BB06EB21B} = {8F3E41FB-EABA-4BB8-8C49-884BB06EB21B}
+	EndProjectSection
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "NotesInColor.Core", "NotesInColor.Core\NotesInColor.Core.csproj", "{4B09BA98-0970-4DA1-975E-993B9A1214A3}"
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "NotesInColor.ViewModel", "NotesInColor.ViewModel\NotesInColor.ViewModel.csproj", "{B70EB0FA-F610-4797-B497-1C8E62440F62}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "NotesInColor.Services", "NotesInColor.Services\NotesInColor.Services.csproj", "{8F3E41FB-EABA-4BB8-8C49-884BB06EB21B}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -77,6 +82,22 @@ Global
 		{B70EB0FA-F610-4797-B497-1C8E62440F62}.Release|x64.Build.0 = Release|Any CPU
 		{B70EB0FA-F610-4797-B497-1C8E62440F62}.Release|x86.ActiveCfg = Release|Any CPU
 		{B70EB0FA-F610-4797-B497-1C8E62440F62}.Release|x86.Build.0 = Release|Any CPU
+		{8F3E41FB-EABA-4BB8-8C49-884BB06EB21B}.Debug|ARM.ActiveCfg = Debug|Any CPU
+		{8F3E41FB-EABA-4BB8-8C49-884BB06EB21B}.Debug|ARM.Build.0 = Debug|Any CPU
+		{8F3E41FB-EABA-4BB8-8C49-884BB06EB21B}.Debug|ARM64.ActiveCfg = Debug|Any CPU
+		{8F3E41FB-EABA-4BB8-8C49-884BB06EB21B}.Debug|ARM64.Build.0 = Debug|Any CPU
+		{8F3E41FB-EABA-4BB8-8C49-884BB06EB21B}.Debug|x64.ActiveCfg = Debug|Any CPU
+		{8F3E41FB-EABA-4BB8-8C49-884BB06EB21B}.Debug|x64.Build.0 = Debug|Any CPU
+		{8F3E41FB-EABA-4BB8-8C49-884BB06EB21B}.Debug|x86.ActiveCfg = Debug|Any CPU
+		{8F3E41FB-EABA-4BB8-8C49-884BB06EB21B}.Debug|x86.Build.0 = Debug|Any CPU
+		{8F3E41FB-EABA-4BB8-8C49-884BB06EB21B}.Release|ARM.ActiveCfg = Release|Any CPU
+		{8F3E41FB-EABA-4BB8-8C49-884BB06EB21B}.Release|ARM.Build.0 = Release|Any CPU
+		{8F3E41FB-EABA-4BB8-8C49-884BB06EB21B}.Release|ARM64.ActiveCfg = Release|Any CPU
+		{8F3E41FB-EABA-4BB8-8C49-884BB06EB21B}.Release|ARM64.Build.0 = Release|Any CPU
+		{8F3E41FB-EABA-4BB8-8C49-884BB06EB21B}.Release|x64.ActiveCfg = Release|Any CPU
+		{8F3E41FB-EABA-4BB8-8C49-884BB06EB21B}.Release|x64.Build.0 = Release|Any CPU
+		{8F3E41FB-EABA-4BB8-8C49-884BB06EB21B}.Release|x86.ActiveCfg = Release|Any CPU
+		{8F3E41FB-EABA-4BB8-8C49-884BB06EB21B}.Release|x86.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

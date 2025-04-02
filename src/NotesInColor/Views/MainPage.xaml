@@ -86,12 +86,12 @@
                     </CommandBar.Resources>
                     <AppBarButton Icon="Add" Width="48"
                           ToolTipService.ToolTip="Open a MIDI File"
-                          Click="OpenFileButton_Click" />
+                          IsEnabled="{x:Bind ViewModel.OpenFileViewModel.IsOpenFileButtonEnabled, Mode=OneWay}"
+                          Command="{x:Bind ViewModel.OpenFileViewModel.OpenFileCommand}" />
                     <AppBarToggleButton Icon="Keyboard" Width="48"
                           ToolTipService.ToolTip="Toggle Practice Mode" />
                     <CommandBar.SecondaryCommands>
-                        <AppBarButton Icon="Setting" Label="Settings"
-                                      Click="OpenSettings_Click">
+                        <AppBarButton Icon="Setting" Label="Settings">
                             <AppBarButton.KeyboardAccelerators>
                                 <KeyboardAccelerator Modifiers="Control" Key="I" />
                             </AppBarButton.KeyboardAccelerators>

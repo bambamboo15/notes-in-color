@@ -24,9 +24,9 @@ using Windows.ApplicationModel;
 using Windows.ApplicationModel.Activation;
 using Windows.Foundation;
 using Windows.Foundation.Collections;
-using CommunityToolkit.Mvvm.DependencyInjection;
-using NotesInColor.ViewModel;
 using Microsoft.Extensions.DependencyInjection;
+using NotesInColor.Services;
+using NotesInColor.ViewModel;
 
 namespace NotesInColor {
     public sealed partial class App : Application {
@@ -39,35 +39,39 @@ namespace NotesInColor {
             Services = ConfigureServices();
         }
 
-        private static IServiceProvider ConfigureServices() {
+        private static ServiceProvider ConfigureServices() {
             var services = new ServiceCollection();
+
+            services.AddSingleton<MainWindow>();
+            services.AddSingleton<RendererControl>();
+            //services.AddSingleton<MainPage>();
+            //services.AddSingleton<SettingsPage>();
 
             services.AddSingleton<MainWindowViewModel>();
             services.AddSingleton<MainPageViewModel>();
             services.AddSingleton<RendererViewModel>();
             services.AddSingleton<SettingsPageViewModel>();
+            services.AddSingleton<OpenFileViewModel>();
+
+            services.AddSingleton<IRequestMIDIFile, RequestMIDIFile>();
 
             return services.BuildServiceProvider();
         }
 
-        public static T? ObtainService<T>() =>
-            Current.Services.GetService<T>();
-
         protected override void OnLaunched(Microsoft.UI.Xaml.LaunchActivatedEventArgs args) {
-            m_window = new MainWindow();
+            Window = new MainWindow(Current.Services.GetService<MainWindowViewModel>()!);
 
-            Frame mainWindowFrame = (m_window as MainWindow)!.MainWindowFrame;
+            Frame mainWindowFrame = (Window as MainWindow)!.MainWindowFrame;
             mainWindowFrame.NavigationFailed += OnNavigationFailed;
             mainWindowFrame.Navigate(typeof(MainPage), args.Arguments);
 
-            m_window.Activate();
+            Window.Activate();
         }
 
         void OnNavigationFailed(object sender, NavigationFailedEventArgs args) {
             throw new Exception("Failed to load Page " + args.SourcePageType.FullName);
         }
 
-        private Window? m_window;
-        public Window? Window => m_window;
+        static public Window? Window;
     }
 }
