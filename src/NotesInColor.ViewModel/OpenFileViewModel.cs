@@ -8,12 +8,14 @@
 
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
+using NotesInColor.Core;
 using NotesInColor.Services;
 
 namespace NotesInColor.ViewModel;
 
 public partial class OpenFileViewModel(
-    IRequestMIDIFile RequestMIDIFile
+    IRequestMIDIFile RequestMIDIFile,
+    MIDIFileParser MIDIFileParser
 ) : ObservableObject {
     [ObservableProperty]
     private bool isOpenFileButtonEnabled = true;
@@ -23,10 +25,16 @@ public partial class OpenFileViewModel(
         IsOpenFileButtonEnabled = false;
 
         string? path = await RequestMIDIFile.OpenFile();
-        System.Diagnostics.Debug.WriteLine(path);
 
-        // do something like conversion to byte[]
-        // somewhere in a model...
+        if (path != null) {
+            System.Diagnostics.Debug.WriteLine(
+                $"[OPENFILEVIEWMODEL] Opened file '{path}'"
+            );
+
+            // yay! parse it! now!
+            using Stream stream = File.OpenRead(path);
+            MIDIFileParser.Parse(stream);
+        }
 
         IsOpenFileButtonEnabled = true;
     }

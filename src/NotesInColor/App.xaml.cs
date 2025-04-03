@@ -27,6 +27,7 @@ using Windows.Foundation.Collections;
 using Microsoft.Extensions.DependencyInjection;
 using NotesInColor.Services;
 using NotesInColor.ViewModel;
+using NotesInColor.Core;
 
 namespace NotesInColor {
     public sealed partial class App : Application {
@@ -54,6 +55,8 @@ namespace NotesInColor {
             services.AddSingleton<OpenFileViewModel>();
 
             services.AddSingleton<IRequestMIDIFile, RequestMIDIFile>();
+
+            services.AddSingleton<MIDIFileParser>();
 
             return services.BuildServiceProvider();
         }
