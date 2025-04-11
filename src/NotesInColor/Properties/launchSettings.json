@@ -1,0 +1,10 @@
+{
+  "profiles": {
+    "NotesInColor (Package)": {
+      "commandName": "MsixPackage"
+    },
+    "NotesInColor (Unpackaged)": {
+      "commandName": "Project"
+    }
+  }
+}
