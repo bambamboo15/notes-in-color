@@ -19,10 +19,23 @@
         <!-- The titlebar -->
         <Grid x:Name="AppTitleBar" Height="32" VerticalAlignment="Top" Grid.Row="0">
             <Grid.ColumnDefinitions>
-                <ColumnDefinition x:Name="LeftPaddingColumn" Width="0" />
-                <ColumnDefinition />
-                <ColumnDefinition x:Name="RightPaddingColumn" Width="0" />
+                <ColumnDefinition Width="Auto" />
+                <ColumnDefinition Width="Auto" />
             </Grid.ColumnDefinitions>
+            <Button Grid.Column="0"
+                    HorizontalAlignment="Left"
+                    Width="40"
+                    Height="32"
+                    Margin="0"
+                    Padding="0"
+                    CornerRadius="0"
+                    Background="Transparent"
+                    BorderBrush="Transparent"
+                    Visibility="{x:Bind Frame.CanGoBack, Mode=OneWay}"
+                    Click="BackButton_Click"
+                    ToolTipService.ToolTip="Back">
+                <FontIcon Glyph="&#xE72B;" FontSize="12" />
+            </Button>
             <Image x:Name="TitleBarIcon" Source="ms-appx:///Assets/appicon.png"
                Grid.Column="1"
                HorizontalAlignment="Left"
@@ -33,10 +46,10 @@
                    Style="{StaticResource CaptionTextBlockStyle}"
                    Grid.Column="1"
                    VerticalAlignment="Center"
-                   Margin="31,0,0,0" />
+                   Margin="32,0,0,0" />
         </Grid>
 
         <!-- Arbitrary page -->
-        <Frame x:Name="frame" Grid.Row="1" />
+        <Frame x:Name="Frame" Grid.Row="1" />
     </Grid>
 </Window>

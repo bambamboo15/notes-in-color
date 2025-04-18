@@ -24,12 +24,15 @@ using Windows.ApplicationModel;
 using Windows.ApplicationModel.Activation;
 using Windows.Foundation;
 using Windows.Foundation.Collections;
+using Windows.Storage;
 using Microsoft.Extensions.DependencyInjection;
 using NotesInColor.Services;
 using NotesInColor.ViewModel;
 using NotesInColor.Core;
 using System.Diagnostics;
 using System.Threading.Tasks;
+using Windows.Data.Xml.Dom;
+using System.Runtime.CompilerServices;
 
 namespace NotesInColor {
     public sealed partial class App : Application {
@@ -40,6 +43,8 @@ namespace NotesInColor {
             this.InitializeComponent();
 
             Services = ConfigureServices();
+
+            LoadSettings();
 
             // catch unhandled exceptions
             AppDomain.CurrentDomain.UnhandledException += OnUnhandledException;
@@ -74,8 +79,10 @@ namespace NotesInColor {
 
             services.AddSingleton<IRequestMIDIFile, RequestMIDIFile>();
             services.AddSingleton<INavigator, Navigator>();
+            services.AddSingleton<ISettingsManager, SettingsManager>();
 
             services.AddSingleton<MIDIPlaythroughData>();
+            services.AddSingleton<Configurations>();
 
             return services.BuildServiceProvider();
         }
@@ -98,6 +105,20 @@ namespace NotesInColor {
             // so many bugs and missing things :/
             var resource = (Style)Resources["DefaultAppBarButtonStyle"];
             resource.Setters[7] = new Setter(FrameworkElement.WidthProperty, 52);
+        }
+
+        private void LoadSettings() {
+            ISettingsManager settingsManager = Current.Services.GetService<ISettingsManager>()!;
+            Configurations configurations = Current.Services.GetService<Configurations>()!;
+
+            settingsManager["theme"] ??= "auto";
+
+            this.RequestedTheme = settingsManager["theme"]! switch {
+                "light" => ApplicationTheme.Light,
+                "dark" => ApplicationTheme.Dark,
+                "auto" => this.RequestedTheme,
+                _ => throw new NotImplementedException("bug")
+            };
         }
 
         void OnNavigationFailed(object sender, NavigationFailedEventArgs args) {

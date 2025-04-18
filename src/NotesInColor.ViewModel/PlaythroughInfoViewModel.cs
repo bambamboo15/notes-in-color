@@ -8,6 +8,7 @@
 
 using CommunityToolkit.Mvvm.ComponentModel;
 using NotesInColor.Core;
+using System;
 
 namespace NotesInColor.ViewModel;
 
@@ -19,10 +20,13 @@ public partial class PlaythroughInfoViewModel : ObservableObject {
 
     public PlaythroughInfoViewModel(MIDIPlaythroughData MIDIPlaythroughData) {
         this.MIDIPlaythroughData = MIDIPlaythroughData;
-        this.MIDIPlaythroughData.Loaded += OnDataLoaded;
+        this.MIDIPlaythroughData.OnLoaded += OnDataLoaded;
     }
 
+    /**
+     * When the MIDI file loads, now we begin...
+     */
     public void OnDataLoaded() {
-        Name = MIDIPlaythroughData.Data!.name;
+        Name = MIDIPlaythroughData.Data!.Name;
     }
 }

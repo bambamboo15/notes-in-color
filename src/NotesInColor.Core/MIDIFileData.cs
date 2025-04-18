@@ -7,6 +7,7 @@
  */
 
 using Melanchall.DryWetMidi.Core;
+using Melanchall.DryWetMidi.Interaction;
 
 namespace NotesInColor.Core;
 
@@ -15,16 +16,25 @@ namespace NotesInColor.Core;
  * 
  * This stores immutable information of MIDI file data.
  */
-public class MIDIFileData(MidiFile midiFile, string name) {
-    public readonly MidiFile? midiFile = midiFile;
-    public readonly string name = name;
-
+public record MIDIFileData(
+    List<Note> Notes,
+    TempoMap TempoMap,
+    double Duration,
+    string Name
+) {
     /**
      * Returns an instance of MIDIFileData that contains relevant MIDI file data
      * from path parameter.
      */
     public static MIDIFileData Parse(string path) {
-        return new MIDIFileData(MidiFile.Read(path),
+        MidiFile midiFile = MidiFile.Read(path, new ReadingSettings {
+            InvalidMetaEventParameterValuePolicy = InvalidMetaEventParameterValuePolicy.SnapToLimits
+        });
+
+        return new MIDIFileData(
+            new List<Note>(midiFile.GetNotes()),
+            midiFile.GetTempoMap(),
+            midiFile.GetDuration<MetricTimeSpan>().TotalSeconds,
             Path.GetFileNameWithoutExtension(path));
     }
 }

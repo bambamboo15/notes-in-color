@@ -24,15 +24,66 @@ using Windows.Foundation;
 using Windows.Foundation.Collections;
 using Windows.Storage.Pickers;
 using Microsoft.Extensions.DependencyInjection;
+using System.Diagnostics;
 
 namespace NotesInColor {
     public sealed partial class MainPage : Page {
         public readonly MainPageViewModel ViewModel;
 
+        private readonly Stopwatch stopwatch = Stopwatch.StartNew();
+        private TimeSpan lastTime = TimeSpan.Zero;
+
+        private bool progressBarThumbDragged = false;
+
         public MainPage() {
             this.InitializeComponent();
             ViewModel = App.Current.Services.GetRequiredService<MainPageViewModel>(); // anti-pattern :(
-            DataContext = ViewModel;
+
+            // I put this here because I wanted to decouple playthrough from Renderer. The playthrough
+            // slider is here in the main page, so I put playthrough advancement code here.
+            CompositionTarget.Rendering += (_, _) => {
+                var now = stopwatch.Elapsed;
+                var deltaTimeSpan = now - lastTime;
+                lastTime = now;
+                double deltaTime = deltaTimeSpan.TotalSeconds;
+
+                if (!progressBarThumbDragged)
+                    ViewModel.PlaythroughViewModel.Next(deltaTime);
+            };
+
+            // Detect slider thumb dragged
+            progressBarSlider.Loaded += (_, _) => {
+                Thumb progressBarThumb = FindVisualChild<Thumb>(progressBarSlider)!;
+                progressBarThumb.DragStarted += (_, _) => progressBarThumbDragged = true;
+                progressBarThumb.DragCompleted += (_, _) => progressBarThumbDragged = false;
+
+                progressBarSlider.AddHandler(
+                    UIElement.PointerPressedEvent,
+                    new PointerEventHandler((_, _) => progressBarThumbDragged = true),
+                    handledEventsToo: true
+                );
+                progressBarSlider.AddHandler(
+                    UIElement.PointerReleasedEvent,
+                    new PointerEventHandler((_, _) => progressBarThumbDragged = false),
+                    handledEventsToo: true
+                );
+            };
+        }
+
+        // NOTE:
+        //   This should be in a separate class, but I'm leaving it here because it's only required here
+        public static T? FindVisualChild<T>(DependencyObject parent) where T : DependencyObject {
+            int count = VisualTreeHelper.GetChildrenCount(parent);
+            for (int i = 0; i < count; i++) {
+                DependencyObject child = VisualTreeHelper.GetChild(parent, i);
+                if (child is T typedChild)
+                    return typedChild;
+
+                T? childOfChild = FindVisualChild<T>(child);
+                if (childOfChild != null)
+                    return childOfChild;
+            }
+            return null;
         }
     }
 }

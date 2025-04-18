@@ -17,9 +17,9 @@ public class PlaythroughUIConverter {
     private static readonly FontIcon playIcon = new() { Glyph = "\xF5B0" };
     private static readonly FontIcon pauseIcon = new() { Glyph = "\xF8AE" };
 
-    public static FontIcon PlayButton(bool value)
-        => value ? pauseIcon : playIcon;
+    public static FontIcon PlayButton(bool value) =>
+        value ? pauseIcon : playIcon;
 
-    public static string PlayButtonToolTip(bool value)
-        => value ? "Play (Ctrl+P)" : "Pause (Ctrl+P)";
+    public static string PlayButtonToolTip(bool value) =>
+        value ? "Play (Ctrl+P)" : "Pause (Ctrl+P)";
 }

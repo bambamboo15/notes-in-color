@@ -39,7 +39,7 @@ namespace NotesInColor {
      */
     public sealed partial class MainWindow : Window {
         public MainWindowViewModel ViewModel { get; }
-        public Frame MainWindowFrame => frame;
+        public Frame MainWindowFrame => this.Frame;
 
         public MainWindow(MainWindowViewModel mainWindowViewModel) {
             this.InitializeComponent();
@@ -65,6 +65,10 @@ namespace NotesInColor {
                 TitleBarTextBlock.Foreground =
                     (SolidColorBrush)App.Current.Resources["WindowCaptionForeground"];
             }
+        }
+
+        private void BackButton_Click(object sender, RoutedEventArgs e) {
+            Frame.GoBack();
         }
     }
 }

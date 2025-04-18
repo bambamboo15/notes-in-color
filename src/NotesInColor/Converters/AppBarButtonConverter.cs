@@ -21,9 +21,9 @@ public class AppBarButtonConverter {
     private static readonly string volume2 = "\xE994";
     private static readonly string volume3 = "\xE995";
 
-    public static FontIcon AdjustSpeedGlyph(double value)
-         => (int)value < 8 ? speedOffIcon : (int)value > 8 ? speedHighIcon : speedMediumIcon;
+    public static FontIcon AdjustSpeedGlyph(double value) =>
+         (int)value < 8 ? speedOffIcon : (int)value > 8 ? speedHighIcon : speedMediumIcon;
 
-    public static string AdjustVolumeGlyph(double value)
-         => value > 66.0 ? volume3 : value > 33.0 ? volume2 : value > 0.5 ? volume1 : volume0;
+    public static string AdjustVolumeGlyph(double value) =>
+         value > 66.0 ? volume3 : value > 33.0 ? volume2 : value > 0.5 ? volume1 : volume0;
 }

@@ -10,6 +10,10 @@
     mc:Ignorable="d"
     Background="Transparent">
 
+    <Page.Resources>
+        <conv:ThousandReductionConverter x:Key="ThousandReductionConverter" />
+    </Page.Resources>
+
     <Grid>
         <Grid.RowDefinitions>
             <RowDefinition Height="Auto" />
@@ -51,10 +55,11 @@
                             <AppBarButton VerticalAlignment="Center"
                                       HorizontalContentAlignment="Center"
                                       VerticalContentAlignment="Center"
-                                      Icon="{x:Bind conv:PlaythroughUIConverter.PlayButton(ViewModel.PlaythroughViewModel.IsPlaying), Mode=OneWay}"
-                                      ToolTipService.ToolTip="{x:Bind conv:PlaythroughUIConverter.PlayButtonToolTip(ViewModel.PlaythroughViewModel.IsPlaying), Mode=OneWay}"
+                                      Icon="{x:Bind conv:PlaythroughUIConverter.PlayButton(ViewModel.PlaythroughViewModel.Playing), Mode=OneWay}"
+                                      ToolTipService.ToolTip="{x:Bind conv:PlaythroughUIConverter.PlayButtonToolTip(ViewModel.PlaythroughViewModel.Playing), Mode=OneWay}"
                                       Style="{StaticResource AppBarButton42Style}"
-                                      Command="{x:Bind ViewModel.PlaythroughViewModel.TogglePlayPauseCommand}">
+                                      Command="{x:Bind ViewModel.PlaythroughViewModel.TogglePlayPauseCommand}"
+                                      IsEnabled="{x:Bind ViewModel.PlaythroughViewModel.Enabled, Mode=OneWay}">
                                 <AppBarButton.KeyboardAccelerators>
                                     <KeyboardAccelerator Modifiers="Control" Key="P" />
                                 </AppBarButton.KeyboardAccelerators>
@@ -75,7 +80,8 @@
                         <SolidColorBrush x:Key="CommandBarBorderBrushOpen" Color="Transparent"/>
                     </CommandBar.Resources>
                     <AppBarButton ToolTipService.ToolTip="Note Size"
-                                  DynamicOverflowOrder="20">
+                                  DynamicOverflowOrder="20"
+                                  IsEnabled="{x:Bind ViewModel.PlaythroughViewModel.Enabled, Mode=OneWay}">
                         <AppBarButton.Icon>
                             <FontIcon Glyph="&#xE9A6;" />
                         </AppBarButton.Icon>
@@ -108,7 +114,8 @@
                     </AppBarButton>
                     <AppBarButton ToolTipService.ToolTip="Adjust Speed"
                                   DynamicOverflowOrder="20"
-                                  Icon="{x:Bind conv:AppBarButtonConverter.AdjustSpeedGlyph(abbAdjustSpeedSlider.Value), Mode=OneWay}">
+                                  Icon="{x:Bind conv:AppBarButtonConverter.AdjustSpeedGlyph(abbAdjustSpeedSlider.Value), Mode=OneWay}"
+                                  IsEnabled="{x:Bind ViewModel.PlaythroughViewModel.Enabled, Mode=OneWay}">
                         <AppBarButton.Flyout>
                             <Flyout>
                                 <StackPanel Orientation="Vertical">
@@ -231,7 +238,7 @@
                     </CommandBar.SecondaryCommands>
                 </CommandBar>
             </Grid>
-            
+
             <!-- SLIDER -->
             <Grid HorizontalAlignment="Stretch" Grid.Row="1" Padding="20,0">
                 <TextBlock HorizontalAlignment="Left"
@@ -240,35 +247,47 @@
                            Margin="0,0,0,2">0:10</TextBlock>
                 <Slider VerticalAlignment="Center"
                         HorizontalAlignment="Stretch"
+                        IsThumbToolTipEnabled="False"
                         Margin="40,0"
                         Minimum="0"
                         Maximum="1000"
-                        Value="0"
-                        IsThumbToolTipEnabled="False">
+                        Value="{x:Bind ViewModel.PlaythroughViewModel.Progress, Converter={StaticResource ThousandReductionConverter}, Mode=TwoWay}"
+                        IsEnabled="{x:Bind ViewModel.PlaythroughViewModel.Enabled, Mode=OneWay}"
+                        x:Name="progressBarSlider">
                     <Slider.Resources>
                         <ResourceDictionary>
-                            <SolidColorBrush x:Key="SliderThumbBackground" Color="#ff7d7d"/>
-                            <SolidColorBrush x:Key="SliderThumbBackgroundPointerOver" Color="#ff7d7d"/>
-                            <SolidColorBrush x:Key="SliderThumbBackgroundPressed" Color="#ff7d7d"/>
+                            <SolidColorBrush x:Key="SliderThumbBackground" Color="#eb3636"/>
+                            <SolidColorBrush x:Key="SliderThumbBackgroundPointerOver" Color="#eb3636"/>
+                            <SolidColorBrush x:Key="SliderThumbBackgroundPressed" Color="#eb3636"/>
+                            <SolidColorBrush x:Key="SliderTrackValueFill" Color="#eb3636"/>
+                            <SolidColorBrush x:Key="SliderTrackValueFillPointerOver" Color="#eb3636"/>
+                            <SolidColorBrush x:Key="SliderTrackValueFillPressed" Color="#eb3636"/>
+                        </ResourceDictionary>
+                        <!--
+                        <ResourceDictionary>
+                            <SolidColorBrush x:Key="SliderThumbBackground" Color="#ff6969"/>
+                            <SolidColorBrush x:Key="SliderThumbBackgroundPointerOver" Color="#ff6969"/>
+                            <SolidColorBrush x:Key="SliderThumbBackgroundPressed" Color="#ff6969"/>
 
                             <LinearGradientBrush x:Key="SliderTrackValueFill"
                                  StartPoint="0,0.5" EndPoint="1,0.5">
                                 <GradientStop Color="#eb3636" Offset="0.0" />
-                                <GradientStop Color="#ff7d7d" Offset="1.0" />
+                                <GradientStop Color="#ff6969" Offset="1.0" />
                             </LinearGradientBrush>
 
                             <LinearGradientBrush x:Key="SliderTrackValueFillPointerOver"
                                  StartPoint="0,0.5" EndPoint="1,0.5">
                                 <GradientStop Color="#eb3636" Offset="0.0" />
-                                <GradientStop Color="#ff7d7d" Offset="1.0" />
+                                <GradientStop Color="#ff6969" Offset="1.0" />
                             </LinearGradientBrush>
 
                             <LinearGradientBrush x:Key="SliderTrackValueFillPressed"
                                  StartPoint="0,0.5" EndPoint="1,0.5">
                                 <GradientStop Color="#eb3636" Offset="0.0" />
-                                <GradientStop Color="#ff7d7d" Offset="1.0" />
+                                <GradientStop Color="#ff6969" Offset="1.0" />
                             </LinearGradientBrush>
                         </ResourceDictionary>
+                        -->
                     </Slider.Resources>
                 </Slider>
                 <TextBlock HorizontalAlignment="Right"
