@@ -71,8 +71,13 @@ namespace NotesInColor {
             }
         }
 
-        private void Restore88KeyLayout(object sender, RoutedEventArgs e) {
+        private void Restore88KeyLayout(object sender, RoutedEventArgs e) =>
             ViewModel.Configurations.Restore88KeyLayout();
-        }
+
+        private void StartWhiteKeyComboBox_DropDownClosed(object sender, object e) =>
+            (sender as ComboBox)!.SelectedIndex = ViewModel.StartWhiteKey;
+
+        private void EndWhiteKeyComboBox_DropDownClosed(object sender, object e) =>
+            (sender as ComboBox)!.SelectedIndex = ViewModel.EndWhiteKey;
     }
 }

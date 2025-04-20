@@ -12,7 +12,7 @@ using System;
 namespace NotesInColor.Converters;
 
 /**
- * Converts 1000 -> 1, and 1 -> 1000. Does nothing else.
+ * Performs divisions
  */
 public partial class ThousandReductionConverter : IValueConverter {
     public object Convert(object value, Type _, object __, string ___) =>

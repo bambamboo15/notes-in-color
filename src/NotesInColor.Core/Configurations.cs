@@ -25,6 +25,14 @@ public class Configurations(ISettingsManager SettingsManager) : INotifyPropertyC
             if (startKey != value) {
                 startKey = value;
 
+                // this shoudn't happen
+                if (MIDIKeyHelper.IsBlackKey(startKey))
+                    --startKey;
+
+                // this also shouldn't happen
+                if (startKey > EndKey)
+                    (startKey, EndKey) = (EndKey, startKey);
+
                 SettingsManager["startKey"] = startKey;
                 OnPropertyChanged(nameof(StartKey));
             }
@@ -40,6 +48,14 @@ public class Configurations(ISettingsManager SettingsManager) : INotifyPropertyC
         set {
             if (endKey != value) {
                 endKey = value;
+
+                // this shoudn't happen
+                if (MIDIKeyHelper.IsBlackKey(endKey))
+                    ++endKey;
+
+                // this also shouldn't happen
+                if (StartKey > endKey)
+                    (endKey, StartKey) = (StartKey, endKey);
 
                 SettingsManager["endKey"] = endKey;
                 OnPropertyChanged(nameof(EndKey));

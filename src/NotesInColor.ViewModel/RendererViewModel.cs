@@ -7,7 +7,6 @@
  */
 
 using CommunityToolkit.Mvvm.ComponentModel;
-using Melanchall.DryWetMidi.Interaction;
 using NotesInColor.Core;
 using System.ComponentModel;
 using System.Diagnostics;
@@ -70,12 +69,12 @@ public partial class RendererViewModel : ObservableObject {
     /**
      * Forwards some information for piano rendering
      */
-    public void PianoForwarder(Action<bool[], bool[]> callback) {
-        bool[] whiteKeysPressed = new bool[WhiteKeyCount];
-        bool[] pseudoBlackKeysPressed = new bool[PseudoBlackKeyCount];
+    public void PianoForwarder(Action<int[], int[]> callback) {
+        int[] whiteKeysPressed = new int[WhiteKeyCount];
+        int[] pseudoBlackKeysPressed = new int[PseudoBlackKeyCount];
 
         for (int i = Configurations.StartKey; i <= Configurations.EndKey; ++i) {
-            bool keyPlaying = MIDIPlaythroughData.KeysPlaying[i];
+            int keyPlaying = MIDIPlaythroughData.KeysPlaying[i].Track;
 
             if (MIDIKeyHelper.IsWhiteKey(i)) {
                 whiteKeysPressed[
@@ -95,29 +94,43 @@ public partial class RendererViewModel : ObservableObject {
 
     /**
      * Loops through all notes and performs callback operations
-     * 
-     * LIMITATION:
-     *   Black keys do not appear over white keys.
      */
-    public void AllObservableNotes(Action<double, double, bool, int> callback) {
-        foreach (Note note in MIDIPlaythroughData.notes) {
+    public void AllObservableNotes(Action<double, double, bool, int, int> callback) {
+        foreach (NoteData note in MIDIPlaythroughData.notes) {
             if (note.NoteNumber < Configurations.StartKey || note.NoteNumber > Configurations.EndKey)
                 continue;
 
-            double start = (double)(note.Time - MIDIPlaythroughData.CurrentTicks)
-                / MIDIPlaythroughData.screenHeightTicks;
-            double end = (double)(note.EndTime - MIDIPlaythroughData.CurrentTicks)
-                / MIDIPlaythroughData.screenHeightTicks;
-
-            bool isWhiteKey = MIDIKeyHelper.IsWhiteKey(note.NoteNumber);
-            int colorKey = isWhiteKey ? (
-                MIDIKeyHelper.WhiteKeyIndex(note.NoteNumber) -
-                MIDIKeyHelper.WhiteKeyIndex(Configurations.StartKey)
-            ) : (
-                MIDIKeyHelper.PseudoBlackKeyIndex(note.NoteNumber - 1) -
-                MIDIKeyHelper.PseudoBlackKeyIndex(Configurations.StartKey)
-            );
-            callback(start, end, isWhiteKey, colorKey);
+            if (MIDIKeyHelper.IsWhiteKey(note.NoteNumber))
+                SendNote(note, callback);
         }
+
+        foreach (NoteData note in MIDIPlaythroughData.notes) {
+            if (note.NoteNumber < Configurations.StartKey || note.NoteNumber > Configurations.EndKey)
+                continue;
+
+            if (MIDIKeyHelper.IsBlackKey(note.NoteNumber))
+                SendNote(note, callback);
+        }
+    }
+
+    /**
+     * Sends off a note without checking.
+     */
+    private void SendNote(NoteData note, Action<double, double, bool, int, int> callback) {
+        double start = (double)(note.Time - MIDIPlaythroughData.CurrentMicroseconds)
+            / MIDIPlaythroughData.ScreenHeightMicroseconds;
+        double end = (double)(note.EndTime - MIDIPlaythroughData.CurrentMicroseconds)
+            / MIDIPlaythroughData.ScreenHeightMicroseconds;
+
+        bool isWhiteKey = MIDIKeyHelper.IsWhiteKey(note.NoteNumber);
+        int colorKey = isWhiteKey ? (
+            MIDIKeyHelper.WhiteKeyIndex(note.NoteNumber) -
+            MIDIKeyHelper.WhiteKeyIndex(Configurations.StartKey)
+        ) : (
+            MIDIKeyHelper.PseudoBlackKeyIndex(note.NoteNumber - 1) -
+            MIDIKeyHelper.PseudoBlackKeyIndex(Configurations.StartKey)
+        );
+
+        callback(start, end, isWhiteKey, colorKey, note.Track);
     }
 };

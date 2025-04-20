@@ -41,15 +41,7 @@ namespace NotesInColor {
 
             // I put this here because I wanted to decouple playthrough from Renderer. The playthrough
             // slider is here in the main page, so I put playthrough advancement code here.
-            CompositionTarget.Rendering += (_, _) => {
-                var now = stopwatch.Elapsed;
-                var deltaTimeSpan = now - lastTime;
-                lastTime = now;
-                double deltaTime = deltaTimeSpan.TotalSeconds;
-
-                if (!progressBarThumbDragged)
-                    ViewModel.PlaythroughViewModel.Next(deltaTime);
-            };
+            CompositionTarget.Rendering += OnRendering;
 
             // Detect slider thumb dragged
             progressBarSlider.Loaded += (_, _) => {
@@ -68,6 +60,30 @@ namespace NotesInColor {
                     handledEventsToo: true
                 );
             };
+
+            // slider snapping functionality
+            noteLengthSlider.RegisterPropertyChangedCallback(Slider.IntermediateValueProperty, (DependencyObject obj, DependencyProperty prop) => {
+                double value = noteLengthSlider.IntermediateValue;
+                noteLengthSlider.IntermediateValue = Math.Abs(value - 0.5) < 0.02 ? 0.5 : value;
+            });
+            adjustSpeedSlider.RegisterPropertyChangedCallback(Slider.IntermediateValueProperty, (DependencyObject obj, DependencyProperty prop) => {
+                double value = adjustSpeedSlider.IntermediateValue;
+                adjustSpeedSlider.IntermediateValue = Math.Abs(value - 0.5) < 0.02 ? 0.5 : value;
+            });
+        }
+
+        protected override void OnNavigatedFrom(NavigationEventArgs e) {
+            CompositionTarget.Rendering -= OnRendering;
+        }
+
+        private void OnRendering(object? sender, object e) {
+            var now = stopwatch.Elapsed;
+            var deltaTimeSpan = now - lastTime;
+            lastTime = now;
+            double deltaTime = deltaTimeSpan.TotalSeconds;
+
+            if (!progressBarThumbDragged)
+                ViewModel.PlaythroughViewModel.Next(deltaTime);
         }
 
         // NOTE:

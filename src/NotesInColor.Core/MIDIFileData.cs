@@ -17,7 +17,7 @@ namespace NotesInColor.Core;
  * This stores immutable information of MIDI file data.
  */
 public record MIDIFileData(
-    List<Note> Notes,
+    List<NoteData> Notes,
     TempoMap TempoMap,
     double Duration,
     string Name
@@ -31,9 +31,19 @@ public record MIDIFileData(
             InvalidMetaEventParameterValuePolicy = InvalidMetaEventParameterValuePolicy.SnapToLimits
         });
 
+        TempoMap tempoMap = midiFile.GetTempoMap();
+
+        int trackIndex = 0;
+        List<NoteData> notes = [];
+        foreach (var trackChunk in midiFile.GetTrackChunks()) {
+            foreach (var note in trackChunk.GetNotes())
+                notes.Add(new NoteData(note, tempoMap, trackIndex));
+            ++trackIndex;
+        }
+
         return new MIDIFileData(
-            new List<Note>(midiFile.GetNotes()),
-            midiFile.GetTempoMap(),
+            [.. notes.OrderBy(n => n.Time)],
+            tempoMap,
             midiFile.GetDuration<MetricTimeSpan>().TotalSeconds,
             Path.GetFileNameWithoutExtension(path));
     }

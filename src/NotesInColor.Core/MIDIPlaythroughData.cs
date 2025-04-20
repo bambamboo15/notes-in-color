@@ -11,6 +11,7 @@ using Melanchall.DryWetMidi.Interaction;
 using System;
 using System.ComponentModel;
 using System.Diagnostics;
+using CommunityToolkit.Mvvm.ComponentModel;
 
 namespace NotesInColor.Core;
 
@@ -20,90 +21,61 @@ namespace NotesInColor.Core;
  * 
  * I like to think of this as a "batteries-included" model
  */
-public class MIDIPlaythroughData : INotifyPropertyChanged {
+public partial class MIDIPlaythroughData : ObservableObject {
     /**
      * Is the composition currently playing?
      */
-    public bool Playing {
-        get => playing;
-        set {
-            if (playing != value) {
-                playing = value;
-                OnPropertyChanged(nameof(Playing));
-            }
-        }
-    }
+    [ObservableProperty]
     private bool playing = false;
 
     /**
      * What is the tempo (relative speed) of composition?
      */
-    public required double Tempo { get; set; } = 1.0;
+    [ObservableProperty]
+    public double tempo = 1.0;
 
     /**
      * What is the progress (in seconds) the song has come to?
      */
-    public double Progress {
-        get => progress;
-        private set {
-            if (progress != value) {
-                progress = value;
+    [ObservableProperty]
+    private double progress = 0.0;
 
-                long microseconds = (long)(value * 1000000.0);
-                long ticks = TimeConverter.ConvertFrom(new MetricTimeSpan(microseconds), Data!.TempoMap);
-                currentTicks = ticks;
-
-                RecomputeNotes();
-
-                if (value >= Data!.Duration)
-                    Playing = false;
-
-                OnPropertyChanged(nameof(Progress));
-            }
-        }
-    }
-    private double progress = 1.0;
+    /**
+     * What is the duration of the song?
+     */
+    [ObservableProperty]
+    private double duration = 0.0;
 
     /**
      * What is the current tick count?
      */
-    public long CurrentTicks => currentTicks;
+    public long CurrentMicroseconds => currentMicroseconds;
 
     /**
-     * The "screen height" in ticks
+     * The "screen height" in seconds
      */
-    public readonly long screenHeightTicks = 1000;
+    [ObservableProperty]
+    private double screenHeightSeconds = 1.0;
+
+    /**
+     * The "screen height" in microseconds
+     */
+    public long ScreenHeightMicroseconds { get; private set; } = 1000000;
+
+    /**
+     * The warmup time in seconds
+     */
+    public double WarmupTimeSeconds { get; private set; } = 2.0;
 
     /**
      * The list of currently observable notes
      */
-    public Queue<Note> notes = [];
+    public Queue<NoteData> notes = [];
 
     /**
-     * An array of if a key is currently playing
-     * 
-     * MIDI file keys go from C-1 (0) to G9 (127)
+     * An array of if a key is currently playing (nullable notes)
      */
-    public bool[] KeysPlaying { get; private set; } = [
-        false, false, false, false, false, false, false, false, false, false, false, false,
-        false, false, false, false, false, false, false, false, false, false, false, false,
-        false, false, false, false, false, false, false, false, false, false, false, false,
-        false, false, false, false, false, false, false, false, false, false, false, false,
-        false, false, false, false, false, false, false, false, false, false, false, false,
-        false, false, false, false, false, false, false, false, false, false, false, false,
-        false, false, false, false, false, false, false, false, false, false, false, false,
-        false, false, false, false, false, false, false, false, false, false, false, false,
-        false, false, false, false, false, false, false, false, false, false, false, false,
-        false, false, false, false, false, false, false, false, false, false, false, false,
-        false, false, false, false, false, false, false, false
-    ];
-
-    /**
-     * Property changed event
-     */
-    public event PropertyChangedEventHandler? PropertyChanged;
-    protected void OnPropertyChanged(string name) =>
-        PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(name));
+    public NoteData[] KeysPlaying { get; private set; } = Enumerable.Repeat(NoteData.Null, 128).ToArray();
 
     /**
      * Event for when a composition is loaded
@@ -119,53 +91,46 @@ public class MIDIPlaythroughData : INotifyPropertyChanged {
     /**
      * Has the composition been loaded yet?
      */
-    public bool IsLoaded {
-        get => isLoaded;
-        set {
-            if (isLoaded != value) {
-                isLoaded = value;
-                OnPropertyChanged(nameof(IsLoaded));
-            }
-        }
-    }
+    [ObservableProperty]
     private bool isLoaded = false;
 
     /**
      * Private properties
      */
-    private long currentTicks = 0;            // current number of ticks during playthrough
-    private long currentTicksFromQueue = 0;   // current number of ticks synced with queue
-    private long keepTicks = 20;             // number of ticks note is kept before queued for disposal
-    private int currentIndex = 0;             // note index of last note actually
+    private long currentMicroseconds = 0;            // current number of microseconds during playthrough
+    private long currentMicrosecondsFromQueue = 0;   // current number of microseconds synced with queue
+    private int currentIndex = 0;                    // note index of last note actually
 
     /**
      * Step FORWARDS by the amount of delta time, in seconds, IF PLAYING.
+     * 
+     * This is affected by tempo.
      */
     public void Next(double deltaTime) {
         Debug.Assert(deltaTime >= 0.0, "You're not stepping backwards");
 
         if (Playing)
-            Progress += deltaTime;
+            Progress += deltaTime * Tempo;
     }
 
     /**
      * Jump to a certain time, even when not playing.
      */
     public void Jump(double time) {
-        Progress = Math.Clamp(time, 0.0, Data!.Duration);
+        Progress = Math.Clamp(time, -WarmupTimeSeconds, Duration);
     }
     
     /**
-     * Loads a composition from MIDIFileData. (Stops playing.)
+     * Loads a composition from MIDIFileData and starts playing.
      */
     public void Load(MIDIFileData data) {
         this.data = data;
-        Playing = false;
+        Playing = true;
         IsLoaded = true;
-        currentTicks = 0;
         currentIndex = 0;
         notes.Clear();
-        Progress = 0.0;
+        Duration = data.Duration;
+        Progress = -WarmupTimeSeconds;
 
         OnLoaded?.Invoke();
     }
@@ -180,7 +145,7 @@ public class MIDIPlaythroughData : INotifyPropertyChanged {
      * ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
      * 
      * Specifically, we start actually processing notes when we reach
-     * a note whose top (Time + Length) exceeds the bottom of the screen,
+     * a note whose top (EndTime) exceeds the bottom of the screen,
      * (currentTicks) implying that a note is currently visible.
      * 
      * We stop when we reach a note whose bottom (Time) exceeds the top
@@ -194,14 +159,17 @@ public class MIDIPlaythroughData : INotifyPropertyChanged {
      * 
      * TODO:
      *   Fix it.
+     *   
+     * LIMITATION:
+     *   Playthrough is abnormally fast.
      */
     private void RecomputeNotes() {
         // If we went backwards, then redo everything
-        if (currentTicks < currentTicksFromQueue) {
+        if (currentMicroseconds < currentMicrosecondsFromQueue) {
             notes.Clear();
             currentIndex = 0;
         }
-        currentTicksFromQueue = currentTicks;
+        currentMicrosecondsFromQueue = currentMicroseconds;
 
         // Discard all notes under bottom of screen
         //
@@ -223,36 +191,53 @@ public class MIDIPlaythroughData : INotifyPropertyChanged {
         // HOWEVER:
         //   These will be discarded eventually.
         while (notes.Count > 0) {
-            Note note = notes.Peek();
-            if (note.EndTime > currentTicks - keepTicks)
+            NoteData note = notes.Peek();
+            if (note.EndTime > currentMicroseconds)
                 break;
 
             notes.Dequeue();
         }
 
-        // Update current keys playing
-        for (int i = 0; i < 128; ++i)
-            KeysPlaying[i] = false;
-
-        foreach (Note note in notes) {
-            if (note.EndTime < currentTicks - keepTicks)
-                continue;
-            else if (note.Time > currentTicks)
-                break;
-
-            KeysPlaying[note.NoteNumber] = true;
-        }
-
         // Add notes under top of screen
         for (int index = currentIndex; index < Data!.Notes.Count; ++index) {
-            Note note = Data!.Notes[index];
-            if (note.EndTime < currentTicks)
+            NoteData note = Data!.Notes[index];
+            if (note.EndTime < currentMicroseconds)
                 continue;
-            else if (note.Time > currentTicks + screenHeightTicks)
+            else if (note.Time > currentMicroseconds + ScreenHeightMicroseconds)
                 break;
 
             notes.Enqueue(note);
             currentIndex = index;
         }
+
+        // Update current keys playing
+        for (int i = 0; i < 128; ++i)
+            KeysPlaying[i] = NoteData.Null;
+
+        foreach (NoteData note in notes) {
+            if (note.EndTime < currentMicroseconds)
+                continue;
+            else if (note.Time > currentMicroseconds)
+                break;
+            else if (!KeysPlaying[note.NoteNumber].IsNull)
+                continue;
+
+            KeysPlaying[note.NoteNumber] = note;
+        }
+    }
+
+    partial void OnScreenHeightSecondsChanging(double oldValue, double newValue) {
+        ScreenHeightMicroseconds = (long)(newValue * 1000000.0);
+
+        Next(0.0);
+    }
+
+    partial void OnProgressChanging(double oldValue, double newValue) {
+        currentMicroseconds = (long)(newValue * 1000000.0);
+
+        RecomputeNotes();
+
+        if (newValue >= Duration)
+            Playing = false;
     }
 }
