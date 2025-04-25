@@ -25,6 +25,7 @@ using Windows.Foundation.Collections;
 using Windows.Storage.Pickers;
 using Microsoft.Extensions.DependencyInjection;
 using System.Diagnostics;
+using NotesInColor.Services;
 
 namespace NotesInColor {
     public sealed partial class MainPage : Page {
@@ -34,6 +35,7 @@ namespace NotesInColor {
         private TimeSpan lastTime = TimeSpan.Zero;
 
         private bool progressBarThumbDragged = false;
+        private double minFPS = 5.0;
 
         public MainPage() {
             this.InitializeComponent();
@@ -80,7 +82,7 @@ namespace NotesInColor {
             var now = stopwatch.Elapsed;
             var deltaTimeSpan = now - lastTime;
             lastTime = now;
-            double deltaTime = deltaTimeSpan.TotalSeconds;
+            double deltaTime = Math.Min(1.0 / minFPS, deltaTimeSpan.TotalSeconds);
 
             if (!progressBarThumbDragged)
                 ViewModel.PlaythroughViewModel.Next(deltaTime);

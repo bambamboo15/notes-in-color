@@ -25,20 +25,18 @@ using Microsoft.Extensions.DependencyInjection;
 using NotesInColor.Services;
 using Microsoft.Windows.AppLifecycle;
 using NotesInColor.Core;
+using System.ComponentModel;
 
 namespace NotesInColor {
     /**
      * This is the settings page.
      */
     public sealed partial class SettingsPage : Page {
-        private readonly SettingsPageViewModel ViewModel;
-        private readonly ISettingsManager settingsManager;
+        public readonly SettingsPageViewModel ViewModel = App.Current.Services.GetRequiredService<SettingsPageViewModel>(); // anti-pattern :(
+        private readonly ISettingsManager settingsManager = App.Current.Services.GetRequiredService<ISettingsManager>(); // more anti-pattern :(
 
         public SettingsPage() {
             this.InitializeComponent();
-
-            ViewModel = App.Current.Services.GetRequiredService<SettingsPageViewModel>(); // anti-pattern :(
-            settingsManager = App.Current.Services.GetRequiredService<ISettingsManager>(); // more anti-pattern :(
 
             // obtain app theme
             themeOption.SelectedIndex = settingsManager["theme"] switch {
@@ -47,6 +45,26 @@ namespace NotesInColor {
                 "auto" => 2,
                 _ => throw new NotImplementedException("that wasn't supposed to happen")
             };
+
+            // random XAML binding initialization timing issue caused me to do this.
+            Loaded += OnLoaded;
+
+            // manual binding :/
+            ViewModel.PropertyChanged += (object? sender, PropertyChangedEventArgs e) => {
+                if (e.PropertyName == nameof(ViewModel.StartWhiteKey)) {
+                    startWhiteKeyComboBox.SelectedIndex = ViewModel.StartWhiteKey;
+                } else if (e.PropertyName == nameof(ViewModel.EndWhiteKey)) {
+                    endWhiteKeyComboBox.SelectedIndex = ViewModel.EndWhiteKey;
+                }
+            };
+        }
+
+        private void OnLoaded(object? sender, object e) {
+            startWhiteKeyComboBox.ItemsSource = ViewModel.NoteNames;
+            endWhiteKeyComboBox.ItemsSource = ViewModel.NoteNames;
+
+            startWhiteKeyComboBox.SelectedIndex = ViewModel.StartWhiteKey;
+            endWhiteKeyComboBox.SelectedIndex = ViewModel.EndWhiteKey;
         }
 
         // user wants to change app theme
@@ -74,10 +92,18 @@ namespace NotesInColor {
         private void Restore88KeyLayout(object sender, RoutedEventArgs e) =>
             ViewModel.Configurations.Restore88KeyLayout();
 
-        private void StartWhiteKeyComboBox_DropDownClosed(object sender, object e) =>
-            (sender as ComboBox)!.SelectedIndex = ViewModel.StartWhiteKey;
+        private void StartWhiteKeyComboBox_DropDownClosed(object sender, object e) {
+            ComboBox comboBox = (sender as ComboBox)!;
 
-        private void EndWhiteKeyComboBox_DropDownClosed(object sender, object e) =>
-            (sender as ComboBox)!.SelectedIndex = ViewModel.EndWhiteKey;
+            ViewModel.StartWhiteKey = comboBox.SelectedIndex;
+            comboBox.SelectedIndex = ViewModel.StartWhiteKey;
+        }
+
+        private void EndWhiteKeyComboBox_DropDownClosed(object sender, object e) {
+            ComboBox comboBox = (sender as ComboBox)!;
+
+            ViewModel.EndWhiteKey = comboBox.SelectedIndex;
+            comboBox.SelectedIndex = ViewModel.EndWhiteKey;
+        }
     }
 }

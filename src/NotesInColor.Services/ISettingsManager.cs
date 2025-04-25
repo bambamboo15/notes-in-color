@@ -1,7 +1,4 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-/**
+﻿/**
  *                    Notes in Color
  *            A project by Benyamin Bamburac
  * 

@@ -7,6 +7,7 @@
     xmlns:conv="using:NotesInColor.Converters"
     xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
     xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+    xmlns:primitives="using:Microsoft.UI.Xaml.Controls.Primitives"
     mc:Ignorable="d"
     Background="Transparent">
 
@@ -39,7 +40,7 @@
                 <Grid HorizontalAlignment="Left" VerticalAlignment="Center" Grid.Column="0">
                     <TextBlock HorizontalAlignment="Left"
                                VerticalAlignment="Center"
-                               FontSize="24"
+                               FontSize="22"
                                FontWeight="SemiBold"
                                Margin="32,0,0,0"
                                Text="{x:Bind ViewModel.PlaythroughInfoViewModel.Name, Mode=OneWay}"
@@ -90,7 +91,7 @@
                             <Flyout>
                                 <StackPanel Orientation="Vertical"
                                             Margin="0">
-                                    <TextBlock HorizontalAlignment="Center">This controls the visual length of the notes on screen.</TextBlock>
+                                    <TextBlock HorizontalAlignment="Center">Control visual length of notes</TextBlock>
                                     <Slider HorizontalAlignment="Stretch"
                                             Margin="0,0,0,-8"
                                             Padding="0"
@@ -124,7 +125,7 @@
                         <AppBarButton.Flyout>
                             <Flyout>
                                 <StackPanel Orientation="Vertical">
-                                    <TextBlock HorizontalAlignment="Center">Adjust the speed of playback however you want!</TextBlock>
+                                    <TextBlock HorizontalAlignment="Center">Control playback speed</TextBlock>
                                     <Slider HorizontalAlignment="Stretch"
                                             Margin="0,0,0,-8"
                                             Minimum="0"
@@ -196,8 +197,11 @@
                                             VerticalAlignment="Center"
                                             Margin="16,0"
                                             Minimum="0"
-                                            Maximum="100"
-                                            Value="100"
+                                            Maximum="1"
+                                            TickFrequency="0.001"
+                                            TickPlacement="None"
+                                            SnapsTo="Ticks"
+                                            Value="{x:Bind ViewModel.PlaythroughViewModel.NormalizedVolume, Mode=TwoWay}"
                                             HorizontalAlignment="Stretch"
                                             IsThumbToolTipEnabled="False"
                                             x:Name="abbAdjustVolumeSlider">
@@ -216,7 +220,7 @@
                                                VerticalAlignment="Center"
                                                FontSize="14"
                                                Padding="0,0,0,2"
-                                               Text="{x:Bind abbAdjustVolumeSlider.Value, Mode=OneWay}" />
+                                               Text="{x:Bind conv:AppBarButtonConverter.VolumeReverseNormalizerAsString(abbAdjustVolumeSlider.Value), Mode=OneWay}" />
                                 </Grid>
                             </Flyout>
                         </AppBarButton.Flyout>
@@ -224,14 +228,14 @@
                     <AppBarSeparator DynamicOverflowOrder="1000" />
                     <CommandBar.SecondaryCommands>
                         <AppBarButton Icon="Folder" Label="Open File"
-                                  ToolTipService.ToolTip="Open File (Ctrl+O)"
-                                  IsEnabled="{x:Bind ViewModel.CommandsViewModel.IsOpenFileButtonEnabled, Mode=OneWay}"
-                                  Command="{x:Bind ViewModel.CommandsViewModel.OpenFileCommand}">
+                                      ToolTipService.ToolTip="Open File (Ctrl+O)"
+                                      IsEnabled="{x:Bind ViewModel.CommandsViewModel.IsOpenFileButtonEnabled, Mode=OneWay}"
+                                      Command="{x:Bind ViewModel.CommandsViewModel.OpenFileCommand}">
                             <AppBarButton.KeyboardAccelerators>
                                 <KeyboardAccelerator Modifiers="Control" Key="O" />
                             </AppBarButton.KeyboardAccelerators>
                         </AppBarButton>
-                        <AppBarButton Icon="Keyboard" Label="Practice Mode">
+                        <AppBarButton Icon="Keyboard" Label="Practice Mode" IsEnabled="False">
                             <AppBarButton.KeyboardAccelerators>
                                 <KeyboardAccelerator Modifiers="Control" Key="K" />
                             </AppBarButton.KeyboardAccelerators>
@@ -248,7 +252,7 @@
             </Grid>
 
             <!-- SLIDER -->
-            <Grid HorizontalAlignment="Stretch" Grid.Row="1" Margin="0,-8,0,0" Padding="20,0">
+            <Grid HorizontalAlignment="Stretch" Grid.Row="1" Margin="0,-8,0,0" Padding="20,0,20,-4">
                 <TextBlock HorizontalAlignment="Left"
                            VerticalAlignment="Center"
                            FontSize="14"

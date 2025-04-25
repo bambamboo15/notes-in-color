@@ -74,21 +74,51 @@
                     </controls:SettingsCard.HeaderIcon>
 
                     <StackPanel Orientation="Horizontal" Spacing="8">
-                        <ComboBox ItemsSource="{x:Bind ViewModel.NoteNames}"
-                                  SelectedIndex="{x:Bind ViewModel.StartWhiteKey, Mode=TwoWay}"
-                                  DropDownClosed="StartWhiteKeyComboBox_DropDownClosed"
-                                  VerticalAlignment="Center" />
+                        <ComboBox DropDownClosed="StartWhiteKeyComboBox_DropDownClosed"
+                                  VerticalAlignment="Center"
+                                  x:Name="startWhiteKeyComboBox" />
                         <TextBlock Text="to"
                                    VerticalAlignment="Center" />
-                        <ComboBox ItemsSource="{x:Bind ViewModel.NoteNames}"
-                                  SelectedIndex="{x:Bind ViewModel.EndWhiteKey, Mode=TwoWay}"
-                                  DropDownClosed="EndWhiteKeyComboBox_DropDownClosed"
-                                  VerticalAlignment="Center"/>
+                        <ComboBox DropDownClosed="EndWhiteKeyComboBox_DropDownClosed"
+                                  VerticalAlignment="Center"
+                                x:Name="endWhiteKeyComboBox" />
                         <Button Content="Reset"
                                 ToolTipService.ToolTip="Restore 88-Key Layout"
                                 Click="Restore88KeyLayout" />
                     </StackPanel>
                 </controls:SettingsCard>
+
+                <controls:SettingsExpander VerticalAlignment="Top"
+                                           Description="Each note has a track, each track has a color; choose these colors"
+                                           Header="Customize note colors">
+                    <controls:SettingsExpander.HeaderIcon>
+                        <FontIcon Glyph="&#xE8A9;" />
+                    </controls:SettingsExpander.HeaderIcon>
+
+                    <controls:SettingsExpander.Items>
+                        <controls:SettingsCard ContentAlignment="Left"
+                                               Padding="64,8,0,8">
+                            <StackPanel Orientation="Horizontal" Spacing="16">
+                                <Border Width="48" Height="48"
+                                        CornerRadius="8"
+                                        Background="Red">
+                                    <Border.ContextFlyout>
+                                        <Flyout>
+                                            <ColorPicker ColorSpectrumShape="Box"
+                                                         IsMoreButtonVisible="False"
+                                                         IsColorSliderVisible="True"
+                                                         IsColorChannelTextInputVisible="True"
+                                                         IsHexInputVisible="True"
+                                                         IsAlphaEnabled="False"
+                                                         IsAlphaSliderVisible="True"
+                                                         IsAlphaTextInputVisible="True" />
+                                        </Flyout>
+                                    </Border.ContextFlyout>
+                                </Border>
+                            </StackPanel>
+                        </controls:SettingsCard>
+                    </controls:SettingsExpander.Items>
+                </controls:SettingsExpander>
 
                 <!-- About -->
                 <TextBlock Style="{StaticResource SettingsSectionHeaderTextBlockStyle}"

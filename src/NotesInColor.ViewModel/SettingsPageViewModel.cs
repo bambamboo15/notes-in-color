@@ -19,7 +19,7 @@ namespace NotesInColor.ViewModel;
  * Settings page.
  */
 public partial class SettingsPageViewModel : ObservableObject {
-    public ObservableCollection<string> NoteNames = [];
+    public ObservableCollection<string> NoteNames { get; private set; } = [];
 
     [ObservableProperty]
     private int startWhiteKey;

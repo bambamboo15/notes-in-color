@@ -51,8 +51,8 @@ namespace NotesInColor {
             var manager = WindowManager.Get(this);
             manager.Width = 1200;
             manager.Height = 800;
-            manager.MinWidth = 600;
-            manager.MinHeight = 400;
+            manager.MinWidth = 800;
+            manager.MinHeight = 500;
 
             ViewModel = mainWindowViewModel;
         }

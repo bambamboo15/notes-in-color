@@ -19,7 +19,8 @@ namespace NotesInColor.ViewModel;
 public partial class CommandsViewModel(
     IRequestMIDIFile RequestMIDIFile,
     INavigator Navigator,
-    MIDIPlaythroughData MIDIPlaythroughData
+    MIDIPlaythroughData MIDIPlaythroughData,
+    INoteAudioPlayer NoteAudioPlayer
 ) : ObservableObject {
     [ObservableProperty]
     private bool isOpenFileButtonEnabled = true;
@@ -35,8 +36,10 @@ public partial class CommandsViewModel(
         IsOpenFileButtonEnabled = false;
 
         string? path = await RequestMIDIFile.OpenFile();
-        if (path != null)
+        if (path != null) {
+            NoteAudioPlayer.AllNotesOff();
             MIDIPlaythroughData.Load(MIDIFileData.Parse(path));
+        }
 
         IsOpenFileButtonEnabled = true;
     }
@@ -46,6 +49,7 @@ public partial class CommandsViewModel(
      */
     [RelayCommand]
     private void OpenSettings() {
+        NoteAudioPlayer.AllNotesOff();
         Navigator.NavigateTo(PageType.SettingsPage);
     }
 }

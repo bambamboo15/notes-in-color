@@ -76,10 +76,12 @@ namespace NotesInColor {
             services.AddSingleton<CommandsViewModel>();
             services.AddSingleton<PlaythroughViewModel>();
             services.AddSingleton<PlaythroughInfoViewModel>();
+            services.AddSingleton<AudioViewModel>();
 
             services.AddSingleton<IRequestMIDIFile, RequestMIDIFile>();
             services.AddSingleton<INavigator, Navigator>();
             services.AddSingleton<ISettingsManager, SettingsManager>();
+            services.AddSingleton<INoteAudioPlayer, NoteAudioPlayer>();
 
             services.AddSingleton<MIDIPlaythroughData>();
             services.AddSingleton<Configurations>();

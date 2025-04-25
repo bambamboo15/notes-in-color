@@ -9,6 +9,7 @@
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using NotesInColor.Core;
+using NotesInColor.Services;
 using System.ComponentModel.Design;
 using System.Diagnostics;
 
@@ -53,12 +54,12 @@ public partial class PlaythroughViewModel : ObservableObject {
     /**
      * The formatted progress as M:SS or MM:SS (BINDABLE)
      */
-    public string FormattedProgress => FormattedTime(Progress);
+    public string FormattedProgress => FormattedTime(Math.Max(0.0f, Progress));
 
     /**
      * The formatted progress remaining as M:SS or MM:SS (BINDABLE)
      */
-    public string FormattedProgressRemaining => FormattedTime(ProgressRemaining);
+    public string FormattedProgressRemaining => FormattedTime(Math.Min(Duration, ProgressRemaining));
 
     // some random flag to avoid floating point imprecision errors causing infinite loops through
     // property getters and setters happening randomly causing a stack overflow
@@ -77,7 +78,7 @@ public partial class PlaythroughViewModel : ObservableObject {
      * with some transformations
      */
     public double minScreenHeightSeconds = 0.25;
-    public double maxScreenHeightSeconds = 3.0;
+    public double maxScreenHeightSeconds = 4.0;
 
     /**
      * The normalized tempo
@@ -85,9 +86,17 @@ public partial class PlaythroughViewModel : ObservableObject {
     [ObservableProperty]
     public double normalizedTempo = 0.5;
 
+    /**
+     * The normalized volume
+     */
+    [ObservableProperty]
+    public double normalizedVolume = 1.0;
+
     private readonly MIDIPlaythroughData MIDIPlaythroughData;
-    public PlaythroughViewModel(MIDIPlaythroughData MIDIPlaythroughData) {
+    private readonly INoteAudioPlayer NoteAudioPlayer;
+    public PlaythroughViewModel(MIDIPlaythroughData MIDIPlaythroughData, INoteAudioPlayer NoteAudioPlayer) {
         this.MIDIPlaythroughData = MIDIPlaythroughData;
+        this.NoteAudioPlayer = NoteAudioPlayer;
 
         // manual binding...
         MIDIPlaythroughData.PropertyChanged += (s, e) => {
@@ -136,7 +145,11 @@ public partial class PlaythroughViewModel : ObservableObject {
     }
 
     partial void OnNormalizedTempoChanged(double value) {
-        MIDIPlaythroughData.Tempo = 0.5 * value * value + 1.25 * value + 0.25;
+        MIDIPlaythroughData.Tempo = 0.1 * value * value + 1.85 * value + 0.05;
+    }
+
+    partial void OnNormalizedVolumeChanging(double value) {
+        NoteAudioPlayer.Volume = value;
     }
 
     private static string FormattedTime(double totalSeconds) =>
@@ -154,6 +167,8 @@ public partial class PlaythroughViewModel : ObservableObject {
      * Toggle play/pause
      */
     [RelayCommand]
-    private void TogglePlayPause() =>
-        Playing = !Playing;
+    private void TogglePlayPause() {
+        if (!(Playing = !Playing))
+            NoteAudioPlayer.AllNotesOff();
+    }
 }

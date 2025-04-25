@@ -25,5 +25,8 @@ public class AppBarButtonConverter {
          value < 0.48 ? speedOffIcon : value > 0.52 ? speedHighIcon : speedMediumIcon;
 
     public static string AdjustVolumeGlyph(double value) =>
-         value > 66.0 ? volume3 : value > 33.0 ? volume2 : value > 0.5 ? volume1 : volume0;
+         value > 0.66 ? volume3 : value > 0.33 ? volume2 : value > 0.05 ? volume1 : volume0;
+
+    public static string VolumeReverseNormalizerAsString(double value) =>
+        ((int)(value * 100.0)).ToString();
 }

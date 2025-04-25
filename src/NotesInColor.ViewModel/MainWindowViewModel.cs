@@ -14,6 +14,6 @@ public partial class MainWindowViewModel(
     MainPageViewModel mainPageViewModel,
     SettingsPageViewModel settingsPageViewModel
 ) : ObservableObject {
-    public MainPageViewModel MainPageViewModel { get; } = mainPageViewModel;
-    public SettingsPageViewModel SettingsPageViewModel { get; } = settingsPageViewModel;
+    public readonly MainPageViewModel MainPageViewModel = mainPageViewModel;
+    public readonly SettingsPageViewModel SettingsPageViewModel = settingsPageViewModel;
 }

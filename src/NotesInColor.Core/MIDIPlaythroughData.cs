@@ -12,6 +12,8 @@ using System;
 using System.ComponentModel;
 using System.Diagnostics;
 using CommunityToolkit.Mvvm.ComponentModel;
+using System.Reflection;
+using static System.Runtime.InteropServices.JavaScript.JSType;
 
 namespace NotesInColor.Core;
 
@@ -37,7 +39,19 @@ public partial class MIDIPlaythroughData : ObservableObject {
     /**
      * What is the progress (in seconds) the song has come to?
      */
-    [ObservableProperty]
+    public double Progress {
+        get => progress;
+        private set {
+            if (value >= Duration)
+                Playing = false;
+
+            if (SetProperty(ref progress, Math.Clamp(value, -WarmupTimeSeconds, Duration))) {
+                currentMicroseconds = (long)(progress * 1000000.0);
+
+                RecomputeNotes();
+            }
+        }
+    }
     private double progress = 0.0;
 
     /**
@@ -68,14 +82,26 @@ public partial class MIDIPlaythroughData : ObservableObject {
     public double WarmupTimeSeconds { get; private set; } = 2.0;
 
     /**
-     * The list of currently observable notes
+     * The list of notes
      */
-    public Queue<NoteData> notes = [];
+    public NoteData[] Notes => Data!.Notes;
 
     /**
-     * An array of if a key is currently playing (nullable notes)
+     * The number of tracks
+     */
+    public int Tracks => Data!.Tracks;
+
+    /**
+     * Arrays of whatever is currently playing
      */
     public NoteData[] KeysPlaying { get; private set; } = Enumerable.Repeat(NoteData.Null, 128).ToArray();
+    private NoteData[,] NotesPlaying = NotesPlayingTracks(1);
+    private NoteData[,] NotesPlayingPrev = NotesPlayingTracks(1);
+
+    /**
+     * An event for when a note is pressed or released (essentially observable KeysPlaying)
+     */
+    public event Action<NoteData, bool>? NoteChanged;
 
     /**
      * Event for when a composition is loaded
@@ -86,7 +112,7 @@ public partial class MIDIPlaythroughData : ObservableObject {
      * The MIDI file data
      */
     public MIDIFileData? Data => data;
-    private MIDIFileData? data;
+    private MIDIFileData? data; // for thread safety across loads
 
     /**
      * Has the composition been loaded yet?
@@ -95,11 +121,16 @@ public partial class MIDIPlaythroughData : ObservableObject {
     private bool isLoaded = false;
 
     /**
+     * Sliding window start and end indices
+     */
+    public int ScreenStartIndex { get; private set; } = 0;          // note index of first note in sliding window
+    public int ScreenEndIndex { get; private set; } = 0;            // note index of last note in sliding window
+
+    /**
      * Private properties
      */
-    private long currentMicroseconds = 0;            // current number of microseconds during playthrough
-    private long currentMicrosecondsFromQueue = 0;   // current number of microseconds synced with queue
-    private int currentIndex = 0;                    // note index of last note actually
+    private long currentMicroseconds = 0;                           // current number of microseconds during playthrough
+    private long currentMicrosecondsFromQueue = 0;                  // current number of microseconds synced with queue
 
     /**
      * Step FORWARDS by the amount of delta time, in seconds, IF PLAYING.
@@ -117,7 +148,7 @@ public partial class MIDIPlaythroughData : ObservableObject {
      * Jump to a certain time, even when not playing.
      */
     public void Jump(double time) {
-        Progress = Math.Clamp(time, -WarmupTimeSeconds, Duration);
+        Progress = time;
     }
     
     /**
@@ -125,12 +156,14 @@ public partial class MIDIPlaythroughData : ObservableObject {
      */
     public void Load(MIDIFileData data) {
         this.data = data;
-        Playing = true;
-        IsLoaded = true;
-        currentIndex = 0;
-        notes.Clear();
+        NotesPlaying = NotesPlayingTracks(data.Tracks);
+        NotesPlayingPrev = NotesPlayingTracks(data.Tracks);
+        ScreenStartIndex = 0;
+        ScreenEndIndex = 0;
         Duration = data.Duration;
         Progress = -WarmupTimeSeconds;
+        Playing = true;
+        IsLoaded = true;
 
         OnLoaded?.Invoke();
     }
@@ -153,21 +186,17 @@ public partial class MIDIPlaythroughData : ObservableObject {
      * 
      * I hope this works :)
      * 
-     * LIMITATION:
-     *   Visible speedup/slowdown when tempo changes. This is because all
-     *   calculations are done with ticks instead of microseconds.
+     * ================================================================
      * 
-     * TODO:
-     *   Fix it.
-     *   
-     * LIMITATION:
-     *   Playthrough is abnormally fast.
+     * I have recently optimized this so it uses two indices instead
+     * of a Queue, and it provides the perfect sliding window functionality
+     * without any allocations.
      */
     private void RecomputeNotes() {
         // If we went backwards, then redo everything
         if (currentMicroseconds < currentMicrosecondsFromQueue) {
-            notes.Clear();
-            currentIndex = 0;
+            ScreenStartIndex = 0;
+            ScreenEndIndex = 0;
         }
         currentMicrosecondsFromQueue = currentMicroseconds;
 
@@ -190,54 +219,96 @@ public partial class MIDIPlaythroughData : ObservableObject {
         //
         // HOWEVER:
         //   These will be discarded eventually.
-        while (notes.Count > 0) {
-            NoteData note = notes.Peek();
+        for (; ScreenStartIndex < ScreenEndIndex; ++ScreenStartIndex) {
+            NoteData note = Notes[ScreenStartIndex];
             if (note.EndTime > currentMicroseconds)
                 break;
-
-            notes.Dequeue();
         }
 
         // Add notes under top of screen
-        for (int index = currentIndex; index < Data!.Notes.Count; ++index) {
-            NoteData note = Data!.Notes[index];
+        for (; ScreenEndIndex < Notes.Length; ++ScreenEndIndex) {
+            NoteData note = Notes[ScreenEndIndex];
             if (note.EndTime < currentMicroseconds)
                 continue;
             else if (note.Time > currentMicroseconds + ScreenHeightMicroseconds)
                 break;
-
-            notes.Enqueue(note);
-            currentIndex = index;
         }
 
-        // Update current keys playing
+        // Update current notes playing
+        //
+        // =============================================
+        //
+        // This used to completely collapse for notes played across several tracks.
+        // You may think that this plays normally, but it becomes much more obvious
+        // when audio comes into play.
+        //
+        // Therefore, I am using a 2D array. However, this still assumes that in an
+        // individual track, no notes are overlapping.
         for (int i = 0; i < 128; ++i)
-            KeysPlaying[i] = NoteData.Null;
+            for (int j = 0; j < Tracks; ++j)
+                NotesPlaying[i, j] = NoteData.Null;
 
-        foreach (NoteData note in notes) {
-            if (note.EndTime < currentMicroseconds)
+        for (int i = ScreenStartIndex; i < ScreenEndIndex; ++i) {
+            NoteData note = Notes[i];
+            if (note.EndTime <= currentMicroseconds)
                 continue;
             else if (note.Time > currentMicroseconds)
                 break;
-            else if (!KeysPlaying[note.NoteNumber].IsNull)
-                continue;
 
-            KeysPlaying[note.NoteNumber] = note;
+            NotesPlaying[note.NoteNumber, note.Track] = note;
+        }
+
+        // Update current keys playing
+        for (int i = 0; i < 128; ++i) {
+            NoteData maxTimeNote = NotesPlaying[i, 0];
+
+            for (int j = 1; j < Tracks; ++j) {
+                NoteData note = NotesPlaying[i, j];
+                if (note.Time >= maxTimeNote.Time)
+                    maxTimeNote = note;
+            }
+
+            KeysPlaying[i] = maxTimeNote;
+        }
+
+        // Audio events for changes in notes playing
+        for (int i = 0; i < 128; ++i) {
+            for (int j = 0; j < Tracks; ++j) {
+                ref NoteData prev = ref NotesPlayingPrev[i, j];
+                ref NoteData cur = ref NotesPlaying[i, j];
+
+                if (!prev.Equals(cur)) {
+                    if (!prev.IsNull) {
+                        // note off
+                        NoteChanged?.Invoke(prev, false);
+                    }
+
+                    if (prev.IsNull || !cur.IsNull) {
+                        // note on
+                        NoteChanged?.Invoke(cur, true);
+                    }
+                }
+
+                prev = cur;
+            }
         }
     }
 
-    partial void OnScreenHeightSecondsChanging(double oldValue, double newValue) {
-        ScreenHeightMicroseconds = (long)(newValue * 1000000.0);
+    private static NoteData[,] NotesPlayingTracks(int tracks) {
+        NoteData[,] output = new NoteData[128, tracks];
 
-        Next(0.0);
+        for (int i = 0; i < 128; ++i)
+            for (int j = 0; j < tracks; ++j)
+                output[i, j] = NoteData.Null;
+
+        return output;
     }
 
-    partial void OnProgressChanging(double oldValue, double newValue) {
-        currentMicroseconds = (long)(newValue * 1000000.0);
+    partial void OnScreenHeightSecondsChanged(double oldValue, double newValue) {
+        ScreenHeightMicroseconds = (long)(newValue * 1000000.0);
 
-        RecomputeNotes();
-
-        if (newValue >= Duration)
-            Playing = false;
+        if (newValue > oldValue) {
+            RecomputeNotes();
+        }
     }
 }

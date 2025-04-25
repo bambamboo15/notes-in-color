@@ -11,13 +11,13 @@ using System;
 namespace NotesInColor.Services;
 
 public class Navigator : INavigator {
-    private static Type DeterminePage(PageType pageType)
-        => pageType switch {
+    private static Type DeterminePage(PageType pageType) =>
+        pageType switch {
             PageType.MainPage => typeof(MainPage),
             PageType.SettingsPage => typeof(SettingsPage),
             _ => throw new ArgumentOutOfRangeException(nameof(pageType))
         };
 
-    public void NavigateTo(PageType pageType)
-        => (App.Window as MainWindow)!.MainWindowFrame.Navigate(DeterminePage(pageType));
+    public void NavigateTo(PageType pageType) =>
+        (App.Window as MainWindow)?.MainWindowFrame.Navigate(DeterminePage(pageType));
 }
