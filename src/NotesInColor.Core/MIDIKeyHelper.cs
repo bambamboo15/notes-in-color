@@ -8,7 +8,7 @@
 
 using System.Diagnostics;
 
-namespace NotesInColor.Core;
+namespace NotesInColor.Shared;
 
 /**
  * A helper for manipulating MIDI key values. (0 = C-1, 127 = G9)
@@ -57,7 +57,7 @@ public static class MIDIKeyHelper {
 
         int div = key / 12, mod = key % 12;
 
-        return 7 * div + (mod switch {
+        return 7 * div + mod switch {
             0 => 0,
             2 => 1,
             4 => 2,
@@ -66,7 +66,7 @@ public static class MIDIKeyHelper {
             9 => 5,
             11 => 6,
             _ => Trap()
-        });
+        };
     }
 
     /**
@@ -81,7 +81,7 @@ public static class MIDIKeyHelper {
 
         int div = key / 12, mod = key % 12;
 
-        return 7 * div + (mod switch {
+        return 7 * div + mod switch {
             0 => 0,
             2 => 1,
             4 => 2,
@@ -90,7 +90,7 @@ public static class MIDIKeyHelper {
             9 => 5,
             11 => 6,
             _ => Trap()
-        });
+        };
     }
 
     /**
@@ -103,14 +103,14 @@ public static class MIDIKeyHelper {
 
         int div = key / 12, mod = key % 12;
 
-        return 5 * div + (mod switch {
+        return 5 * div + mod switch {
             1 => 0,
             3 => 1,
             6 => 2,
             8 => 3,
             10 => 4,
             _ => Trap()
-        });
+        };
     }
 
     /**
@@ -125,7 +125,7 @@ public static class MIDIKeyHelper {
     public static int KeyFromWhite(int whiteKey) {
         int div = whiteKey / 7, mod = whiteKey % 7;
 
-        return 12 * div + (mod switch {
+        return 12 * div + mod switch {
             0 => 0,
             1 => 2,
             2 => 4,
@@ -134,7 +134,7 @@ public static class MIDIKeyHelper {
             5 => 9,
             6 => 11,
             _ => Trap()
-        });
+        };
     }
 
     // I am completely aware that KeyFromBlack and KeyFromPseudoBlack are

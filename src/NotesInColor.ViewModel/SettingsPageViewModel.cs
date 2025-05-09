@@ -7,7 +7,8 @@
  */
 
 using CommunityToolkit.Mvvm.ComponentModel;
-using NotesInColor.Core;
+using CommunityToolkit.Mvvm.Input;
+using NotesInColor.Shared;
 using NotesInColor.Services;
 using System.Collections.ObjectModel;
 using System.ComponentModel;
@@ -27,6 +28,9 @@ public partial class SettingsPageViewModel : ObservableObject {
     [ObservableProperty]
     private int endWhiteKey;
 
+    [ObservableProperty]
+    private bool canRemove;
+
     public readonly Configurations Configurations;
 
     public SettingsPageViewModel(Configurations Configurations) {
@@ -34,12 +38,16 @@ public partial class SettingsPageViewModel : ObservableObject {
 
         StartWhiteKey = MIDIKeyHelper.WhiteKeyIndex(Configurations.StartKey);
         EndWhiteKey = MIDIKeyHelper.WhiteKeyIndex(Configurations.EndKey);
+        CanRemove = Configurations.NoteColors.Count > 1;
 
         for (int i = 0; i < 128; ++i)
             if (MIDIKeyHelper.IsWhiteKey(i))
                 NoteNames.Add(MIDIKeyHelper.ToFormatted(i));
 
         Configurations.PropertyChanged += OnConfigurationsPropertyChanged;
+        Configurations.NoteColors.CollectionChanged += (_, _) => {
+            CanRemove = Configurations.NoteColors.Count > 1;
+        };
     }
 
     partial void OnStartWhiteKeyChanged(int value) =>
@@ -47,6 +55,19 @@ public partial class SettingsPageViewModel : ObservableObject {
 
     partial void OnEndWhiteKeyChanged(int value) =>
         Configurations.EndKey = MIDIKeyHelper.KeyFromWhite(value);
+
+    [RelayCommand]
+    private void NoteColorAdd(BindableColor color) {
+        int index = Configurations.NoteColors.IndexOf(color);
+        if (index != -1)
+            Configurations.NoteColors.Insert(index + 1, new BindableColor(255, 255, 255));
+    }
+
+    [RelayCommand]
+    private void NoteColorRemove(BindableColor color) {
+        if (CanRemove)
+            Configurations.NoteColors.Remove(color);
+    }
 
     private void OnConfigurationsPropertyChanged(object? sender, PropertyChangedEventArgs e) {
         if (e.PropertyName == nameof(Configurations.StartKey)) {

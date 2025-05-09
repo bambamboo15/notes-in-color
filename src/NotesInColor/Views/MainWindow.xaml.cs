@@ -32,21 +32,24 @@ using Windows.Storage.Pickers;
 using WinUIEx;
 using NotesInColor.ViewModel;
 using Microsoft.Extensions.DependencyInjection;
+using NotesInColor.Services;
 
 namespace NotesInColor {
     /**
      * Represents the main window of the application.
      */
-    public sealed partial class MainWindow : Window {
+    public sealed partial class MainWindow : WindowEx {
         public MainWindowViewModel ViewModel { get; }
+        private ISettingsManager SettingsManager;
+
         public Frame MainWindowFrame => this.Frame;
 
-        public MainWindow(MainWindowViewModel mainWindowViewModel) {
+        public MainWindow() {
             this.InitializeComponent();
-            this.Activated += MainWindow_Activated;
 
             this.SystemBackdrop = new MicaBackdrop() { Kind = MicaKind.Base };
             this.ExtendsContentIntoTitleBar = true;
+            SetTitleBar(AppTitleBar);
 
             var manager = WindowManager.Get(this);
             manager.Width = 1200;
@@ -54,21 +57,44 @@ namespace NotesInColor {
             manager.MinWidth = 800;
             manager.MinHeight = 500;
 
-            ViewModel = mainWindowViewModel;
+            ViewModel = App.Current.Services.GetRequiredService<MainWindowViewModel>();
+            SettingsManager = App.Current.Services.GetRequiredService<ISettingsManager>();
+
+            MainWindowFrame.Loaded += (_, _) => UpdateTheme();
         }
 
-        private void MainWindow_Activated(object sender, WindowActivatedEventArgs args) {
-            if (args.WindowActivationState == WindowActivationState.Deactivated) {
-                TitleBarTextBlock.Foreground =
-                    (SolidColorBrush)App.Current.Resources["WindowCaptionForegroundDisabled"];
-            } else {
-                TitleBarTextBlock.Foreground =
-                    (SolidColorBrush)App.Current.Resources["WindowCaptionForeground"];
+        /**
+         * Updates the window theme to match settings.
+         */
+        public void UpdateTheme() {
+            if (SettingsManager["theme"] is not string theme)
+                return;
+
+            ElementTheme elementTheme = theme switch {
+                "light" => ElementTheme.Light,
+                "dark" => ElementTheme.Dark,
+                "auto" => ElementTheme.Default,
+                _ => throw new NotImplementedException("bug")
+            };
+
+            TitleBarTheme titleBarTheme = theme switch {
+                "light" => TitleBarTheme.Light,
+                "dark" => TitleBarTheme.Dark,
+                "auto" => TitleBarTheme.UseDefaultAppMode,
+                _ => throw new NotImplementedException("bug")
+            };
+            
+            if (MainWindowFrame.XamlRoot?.Content is FrameworkElement frameworkElement) {
+                frameworkElement.RequestedTheme = elementTheme;
             }
+            MainWindowFrame.RequestedTheme = elementTheme;
+
+            AppWindow.TitleBar.PreferredTheme = titleBarTheme;
         }
 
         private void BackButton_Click(object sender, RoutedEventArgs e) {
-            Frame.GoBack();
+            if (Frame.CanGoBack)
+                Frame.GoBack();
         }
     }
 }

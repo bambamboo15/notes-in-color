@@ -16,7 +16,7 @@ namespace NotesInColor.Services;
 public class RequestMIDIFile : IRequestMIDIFile {
     public async Task<string?> OpenFile() {
         var openPicker = new FileOpenPicker();
-        var window = App.Window;
+        var window = App.Current.Window;
         var hWnd = WindowNative.GetWindowHandle(window);
         InitializeWithWindow.Initialize(openPicker, hWnd);
 

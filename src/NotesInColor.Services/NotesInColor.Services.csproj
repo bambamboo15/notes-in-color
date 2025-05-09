@@ -6,4 +6,8 @@
     <Nullable>enable</Nullable>
   </PropertyGroup>
 
+  <ItemGroup>
+    <ProjectReference Include="..\NotesInColor.Core\NotesInColor.Core.csproj" />
+  </ItemGroup>
+
 </Project>

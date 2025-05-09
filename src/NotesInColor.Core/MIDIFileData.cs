@@ -8,6 +8,8 @@
 
 using Melanchall.DryWetMidi.Core;
 using Melanchall.DryWetMidi.Interaction;
+using Melanchall.DryWetMidi.Multimedia;
+using System.Diagnostics;
 
 namespace NotesInColor.Core;
 
@@ -18,7 +20,7 @@ namespace NotesInColor.Core;
  */
 public record MIDIFileData(
     NoteData[] Notes,
-    TempoMap TempoMap,
+    NonNoteTimedEventData[] NonNoteTimedEvents,
     double Duration,
     string Name,
     int Tracks
@@ -36,15 +38,20 @@ public record MIDIFileData(
 
         int trackIndex = 0;
         List<NoteData> notes = [];
+        List<NonNoteTimedEventData> nonNoteTimedEvents = [];
         foreach (var trackChunk in midiFile.GetTrackChunks()) {
             foreach (var note in trackChunk.GetNotes())
                 notes.Add(new NoteData(note, tempoMap, trackIndex));
             ++trackIndex;
+
+            foreach (var midiEvent in trackChunk.GetTimedEvents())
+                if (midiEvent.Event is not (NoteOnEvent or NoteOnEvent))
+                    nonNoteTimedEvents.Add(new NonNoteTimedEventData(midiEvent, tempoMap));
         }
 
         return new MIDIFileData(
             [.. notes.OrderBy(n => n.Time)],
-            tempoMap,
+            [.. nonNoteTimedEvents.OrderBy(e => e.Time)],
             midiFile.GetDuration<MetricTimeSpan>().TotalSeconds,
             Path.GetFileNameWithoutExtension(path),
             trackIndex);

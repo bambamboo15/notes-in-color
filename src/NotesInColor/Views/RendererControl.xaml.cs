@@ -38,37 +38,57 @@ using Microsoft.Graphics.Canvas.UI.Xaml;
 using Microsoft.Graphics.Canvas;
 using Microsoft.Graphics.Canvas.Brushes;
 using System.Diagnostics;
-using NotesInColor.Core;
+using NotesInColor.Shared;
 using System.Collections;
 using System.Threading.Tasks;
+using NotesInColor.Converters;
+using Microsoft.Graphics.Canvas.Text;
+using System.Collections.Specialized;
+using Microsoft.Graphics.Canvas.Geometry;
+using static System.Net.Mime.MediaTypeNames;
+using System.Reflection;
 
 namespace NotesInColor {
     /**
-     * What did I write here?
+     * This class deals with rendering, in what hopefully is the simplest way possible.
+     * 
+     * This violates separation of concerns in many ways. This also violates some MVVM as well,
+     * and has the added bonus of reducing testability.
+     * 
+     * IMPORTANT TODO:
+     *        - Do not depend on MIDIKeyHelper
+     *        - Do not depend on Configurations.StartKey and Configurations.EndKey
      */
     public sealed partial class RendererControl : UserControl {
-        private readonly RendererViewModel ViewModel;
+        private readonly RendererViewModel RendererViewModel;
+        private readonly PracticeModeViewModel PracticeModeViewModel;
+        private readonly Configurations Configurations;
+        private readonly ColorRGBToColorConverter ColorRGBToColorConverter;
 
-        private readonly float whiteKeyMaxHeight = 128.0f;            /* customizable */
-        private readonly float whiteKeyGap = 2.0f;                   /* customizable */
-        private readonly float blackKeyHeightRatio = 0.58f;          /* customizable */
-        private readonly float blackKeyWidthRatio = 0.53f;           /* customizable */
-        private readonly float signatureRedLineHeight = 3.75f;       /* customizable */
-
-        private float whiteKeyHeight => whiteKeyMaxHeight * Math.Min(1.0f + Math.Max(height - 500.0f, 0.0f) * 0.002f, width * 0.0338f / ViewModel.WhiteKeyCount);
-
+        /**
+         * Rendering properties
+         */
         private float width;
         private float height;
 
-        private Color[] noteColorLookup = [
-            Color.FromArgb(0xFF, 0x00, 0xBC, 0xD4),
-            Color.FromArgb(0xFF, 0xF0, 0x94, 0x13), // start
-            Color.FromArgb(0xFF, 0x42, 0x87, 0xF5),
-            Color.FromArgb(0xFF, 0x4C, 0xAF, 0x50),
-            Color.FromArgb(0xFF, 0xE9, 0x1E, 0x63),
-            Color.FromArgb(0xFF, 0x9C, 0x27, 0xB0)
-        ];
+        private float emptySpace;
+        private float signatureRedLineHeight;
 
+        private float whiteKeyHeight;
+        private float whiteKeyWidth;
+        private float whiteKeyWidthFull;
+        private float blackKeyWidth;
+        private float blackKeyHeight;
+
+        private readonly float whiteKeyMaxHeight = 128.0f;
+        private readonly float whiteKeyGap = 2.0f;
+        private readonly float blackKeyHeightRatio = 0.58f;
+        private readonly float blackKeyWidthRatio = 0.53f;
+
+        /**
+         * Precomputed note color, brush, and format properties
+         */
+        private Color[] noteColorLookup = [];
         private Color[] noteDarkColorLookup = [];
         private Color[] noteDarkerColorLookup = [];
         private CanvasLinearGradientBrush[] pianoWhiteKeyBrushes = [];
@@ -78,131 +98,281 @@ namespace NotesInColor {
         private CanvasLinearGradientBrush blackKeyBrush = null!;
         private CanvasLinearGradientBrush fadeBrush = null!;
 
-        //private readonly AutoResetEvent renderRequest = new(false);
-        //private readonly AutoResetEvent performUIThreadUpdate = new(false);
-        //private bool availableToRequest = true;
+        private CanvasTextFormat canvasTextFormat = null!;
+        private CanvasTextFormat feedbackTextFormat = null!;
 
+        private CanvasGeometry perfectFeedbackTextGeometry = null!;
+        private CanvasGeometry goodFeedbackTextGeometry = null!;
+        private CanvasGeometry missFeedbackTextGeometry = null!;
+
+        /**
+         * Stopwatches
+         */
+        private Stopwatch deltaTimeStopwatch = Stopwatch.StartNew();
+        private double deltaTime;
+
+        private Stopwatch fpsStopwatch = Stopwatch.StartNew();
+        private int frameCount = 0;
+        private int fps;
+
+        /**
+         * Easing variables
+         */
+        private float fpsEase = 0.0f;
+        private float fpsEaseFactor = 0.1f;
+        private bool fpsEaseUpwardsCondition => RendererViewModel.ShowFPS;
+
+        private float pianoEase = 0.0f;
+        private float pianoEaseFactor = 0.1f;
+        private bool pianoEaseUpwardsCondition => RendererViewModel.ShowPiano;
+
+        /**
+         * Number of white keys
+         */
+        public int whiteKeyCount;
+
+        /**
+         * All on-screen feedback
+         */
+        public (PracticeModeFeedback feedback, double elapsedTime)[] visibleFeedback = Enumerable.Repeat((new PracticeModeFeedback(), 0.0), 128).ToArray();
+
+        /**
+         * Initialize everything
+         */
         public RendererControl() {
             this.InitializeComponent();
 
-            ViewModel = App.Current.Services.GetRequiredService<RendererViewModel>();
+            // dependency injection but it's not because of default constructor
+            RendererViewModel = App.Current.Services.GetRequiredService<RendererViewModel>();
+            PracticeModeViewModel = App.Current.Services.GetRequiredService<PracticeModeViewModel>();
+            Configurations = App.Current.Services.GetRequiredService<Configurations>();
+            ColorRGBToColorConverter = new ColorRGBToColorConverter();
 
+            // initialize the swap chain
             CanvasDevice device = CanvasDevice.GetSharedDevice();
             CanvasSwapChain swapChain = new CanvasSwapChain(device, 100.0f, 100.0f, 96);
             canvasSwapChainPanel.SwapChain = swapChain;
             canvasSwapChainPanel.SizeChanged += OnCanvasResize;
 
-            UpdateBrushes();
-
+            // trigger Update on every render, and load/unload it dynamically to avoid bugs
             Loaded += (_, _) => CompositionTarget.Rendering += Update;
             Unloaded += (_, _) => CompositionTarget.Rendering -= Update;
 
-            /*
-            Thread renderThread = new Thread(() => {
-                performUIThreadUpdate.Set();
+            // trigger OnNoteColorsCollectionChanged on every note color collection change, and load/unload it dynamically to avoid bugs
+            Loaded += (_, _) => Configurations.NoteColors.CollectionChanged += OnNoteColorsCollectionChanged;
+            Unloaded += (_, _) => Configurations.NoteColors.CollectionChanged -= OnNoteColorsCollectionChanged;
 
-                while (true) {
-                    renderRequest.WaitOne();
-                    Draw();
-                }
-            }) {
-                IsBackground = true,
-                Priority = ThreadPriority.AboveNormal,
-            };
-            renderThread.Start();
-            */
+            // on every feedback recieved, do something
+            PracticeModeViewModel.Feedback += OnFeedback;
+
+            // initialize dimensions
+            Loaded += (_, _) => UpdateDimensions(new(canvasSwapChainPanel.ActualWidth, canvasSwapChainPanel.ActualHeight));
+
+            // initialize expensive properties
+            UpdateNoteColorBrushFormatProperties();
         }
 
-        private void Update(object? sender, object e) {
-            //if (availableToRequest && !ViewModel.RecomputingNotes) {
-            //    availableToRequest = false;
-            //    renderRequest.Set();
-            //}
+        /**
+         * This function is intended to be called every rendering frame.
+         */
+        private void Update(object? sender, object args) {
+            // stopwatches
+            RecomputeDeltaTime();
+            RecomputeFPS();
+
+            // recompute other properties
+            RecomputeProperties();
+
+            // logic
+            AssessPlayerInput();
+
+            // drawing
+            ApplyEasings();
             Draw();
         }
 
-        private void Draw() {
-            //performUIThreadUpdate.Reset();
+        /**
+         * Recomputes the delta time.
+         */
+        private void RecomputeDeltaTime() {
+            deltaTime = deltaTimeStopwatch.ElapsedMilliseconds / 1000.0;
+            deltaTimeStopwatch.Restart();
+        }
 
+        /**
+         * Recomputes the FPS.
+         */
+        private void RecomputeFPS() {
+            ++frameCount;
+            if (fpsStopwatch.ElapsedMilliseconds >= 1000) {
+                fps = frameCount;
+                frameCount = 0;
+
+                fpsStopwatch.Restart();
+            }
+        }
+
+        /**
+         * This function assesses player input for rhythm game feedback.
+         */
+        private void AssessPlayerInput() {
+            for (int i = 0; i < 128; ++i)
+                visibleFeedback[i] = (
+                    visibleFeedback[i].elapsedTime > 0.75f
+                        ? new()
+                        : visibleFeedback[i].feedback,
+                    visibleFeedback[i].elapsedTime + deltaTime);
+
+            PracticeModeViewModel.AssessPlayerInput();
+        }
+
+        /**
+         * Recomputes various properties. Must be called every frame.
+         */
+        private void RecomputeProperties() {
+            whiteKeyCount = MIDIKeyHelper.WhiteKeyIndex(Configurations.EndKey) - MIDIKeyHelper.WhiteKeyIndex(Configurations.StartKey);
+
+            float oldWhiteKeyWidthFull = whiteKeyWidthFull;
+
+            whiteKeyHeight = (whiteKeyMaxHeight * Math.Min(1.0f + Math.Max(height - 500.0f, 0.0f) * 0.002f, width * 0.0338f / whiteKeyCount));
+            whiteKeyWidthFull = width / whiteKeyCount;
+            whiteKeyWidth = whiteKeyWidthFull - whiteKeyGap;
+            blackKeyHeight = whiteKeyHeight * blackKeyHeightRatio;
+            blackKeyWidth = whiteKeyWidthFull * blackKeyWidthRatio;
+
+            signatureRedLineHeight = pianoEase * 3.75f;
+            emptySpace = Math.Clamp((1.0f - pianoEase) * (whiteKeyHeight + 16) + height - whiteKeyHeight, 0.0f, height);
+
+            // If the white key width changed, then only then do all of these allocations
+            if (oldWhiteKeyWidthFull != whiteKeyWidthFull) {
+                feedbackTextFormat?.Dispose();
+                feedbackTextFormat = new() { FontFamily = "Segoe UI Variable", FontSize = whiteKeyWidthFull / 1.4f, FontWeight = new Windows.UI.Text.FontWeight(500), HorizontalAlignment = CanvasHorizontalAlignment.Center, VerticalAlignment = CanvasVerticalAlignment.Center };
+
+                perfectFeedbackTextGeometry?.Dispose();
+                perfectFeedbackTextGeometry = CanvasGeometry.CreateText(new(canvasSwapChainPanel.SwapChain, "Perfect!", feedbackTextFormat, 256, 0));
+
+                missFeedbackTextGeometry?.Dispose();
+                missFeedbackTextGeometry = CanvasGeometry.CreateText(new(canvasSwapChainPanel.SwapChain, "Miss!", feedbackTextFormat, 256, 0));
+
+                goodFeedbackTextGeometry?.Dispose();
+                goodFeedbackTextGeometry = CanvasGeometry.CreateText(new(canvasSwapChainPanel.SwapChain, "Good!", feedbackTextFormat, 256, 0));
+            }
+        }
+
+        /**
+         * Apply one discrete time step of various easings. This depends on deltaTime.
+         */
+        private void ApplyEasings() {
+            fpsEase = Math.Clamp((1.0f - fpsEaseFactor) * fpsEase + (fpsEaseUpwardsCondition ? fpsEaseFactor : 0.0f), 0.0f, 1.0f);
+            pianoEase = Math.Clamp((1.0f - pianoEaseFactor) * pianoEase + (pianoEaseUpwardsCondition ? pianoEaseFactor : 0.0f), 0.0f, 1.0f);
+        }
+
+        /**
+         * Draws everything.
+         */
+        private void Draw() {
             using (CanvasDrawingSession ds = canvasSwapChainPanel.SwapChain.CreateDrawingSession(Colors.Transparent)) {
+                // upper gradient
                 using var layer = ds.CreateLayer(fadeBrush);
 
-                //ds.FillRectangle(0, 0, width, height, Color.FromArgb(0xFF, 0x0F, 0x0F, 0x0F));
-                ViewModel.AllObservableNotes((double start, double end, bool isWhiteKey, int colorKey, int track) =>
-                    DrawNote(ds, (float)start, (float)end, isWhiteKey, colorKey, track));
-                ViewModel.PianoForwarder((int[] whiteKeysPressed, int[] pseudoBlackKeysPressed) =>
-                    DrawPiano(ds, whiteKeysPressed, pseudoBlackKeysPressed));
+                // draw all white notes
+                RendererViewModel.AllObservableNotes((double start, double end, int key, int track) => {
+                    if (MIDIKeyHelper.IsWhiteKey(key))
+                        DrawNote(ds, (float)start, (float)end, key, track);
+                });
+
+                // draw all black notes
+                RendererViewModel.AllObservableNotes((double start, double end, int key, int track) => {
+                    if (MIDIKeyHelper.IsBlackKey(key))
+                        DrawNote(ds, (float)start, (float)end, key, track);
+                });
+
+                // draw feedback
+                DrawFeedback(ds);
+
+                // draw piano
+                RendererViewModel.ComputeKeysPressed();
+                DrawPiano(ds);
+
+                // draw FPS
+                DrawFPS(ds);
             }
 
-            //performUIThreadUpdate.Set();
-
-            //DispatcherQueue.TryEnqueue(() => {
-                canvasSwapChainPanel.SwapChain.Present();
-            //    availableToRequest = true;
-            //});
+            canvasSwapChainPanel.SwapChain.Present();
         }
 
         /**
          * Draws a note.
          */
-        private void DrawNote(CanvasDrawingSession ds, float start, float end, bool isWhiteKey, int colorKey, int track) {
-            float whiteKeyWidthFull = width / ViewModel.WhiteKeyCount;
-            float whiteKeyWidth = whiteKeyWidthFull - whiteKeyGap;
-            float blackKeyHeight = whiteKeyHeight * blackKeyHeightRatio;
-            float blackKeyWidth = whiteKeyWidthFull * blackKeyWidthRatio; 
-            float space = height - whiteKeyHeight;
+        private void DrawNote(CanvasDrawingSession ds, float start, float end, int key, int track) {
+            // don't draw unnecessary notes
+            if (key < Configurations.StartKey || key >= Configurations.EndKey)
+                return;
+
+            bool isWhiteKey = MIDIKeyHelper.IsWhiteKey(key);
+            int colorKey = isWhiteKey ? (
+                MIDIKeyHelper.WhiteKeyIndex(key) -
+                MIDIKeyHelper.WhiteKeyIndex(Configurations.StartKey)
+            ) : (
+                MIDIKeyHelper.PseudoBlackKeyIndex(key - 1) -
+                MIDIKeyHelper.PseudoBlackKeyIndex(Configurations.StartKey)
+            );
 
             float x = isWhiteKey ?
                 (colorKey * whiteKeyWidthFull) :
                 ((colorKey + 1) * whiteKeyWidthFull - blackKeyWidth * 0.5f - whiteKeyGap * 0.5f);
-            float y = (1.0f - end) * space;
+            float y = (1.0f - end) * emptySpace;
             float w = isWhiteKey ? whiteKeyWidth : blackKeyWidth;
-            float h = (end - start) * space;
+            float h = (end - start) * emptySpace;
             float border = w * 0.1f;
 
             ds.FillRectangle(x, y, w, h, LookupNoteDarkerColor(track));
             ds.FillRectangle(x + border, y + border, w - 2 * border, h - 2 * border, isWhiteKey ? LookupNoteColor(track) : LookupNoteDarkColor(track));
-            // ds.FillRoundedRectangle(x, y, w, h, Math.Min(h, 12.0f) / 2.0f, Math.Min(h, 12.0f) / 2.0f, isWhiteKey ? LookupNoteColor(track) : LookupNoteDarkColor(track));
         }
 
         /**
          * Draws the piano.
          */
-        private void DrawPiano(CanvasDrawingSession ds, int[] whiteKeysPressed, int[] pseudoBlackKeysPressed) {
-            float whiteKeyWidthFull = width / ViewModel.WhiteKeyCount;
-            float whiteKeyWidth = whiteKeyWidthFull - whiteKeyGap;
-            float blackKeyHeight = whiteKeyHeight * blackKeyHeightRatio;
-            float blackKeyWidth = whiteKeyWidthFull * blackKeyWidthRatio;
-
+        private void DrawPiano(CanvasDrawingSession ds) {
             // draw piano background
             ds.FillRectangle(
                 0.0f,
-                height - whiteKeyHeight,
+                emptySpace,
                 width,
                 whiteKeyHeight,
-                Color.FromArgb(0xFF, 0x00, 0x00, 0x00)
+                Color.FromArgb(0xFF, 0x00, 0x00, 0x00) // TRANSPARENT FOR NOW
             );
 
             // draw white keys
-            for (int i = 0; i < ViewModel.WhiteKeyCount; ++i) {
-                ds.FillRectangle(
-                    i * whiteKeyWidthFull,
-                    height - whiteKeyHeight,
-                    whiteKeyWidth,
-                    whiteKeyHeight,
-                    LookupWhiteKeyBrush(whiteKeysPressed[i])
-                );
+            for (int i = Configurations.StartKey; i < Configurations.EndKey; ++i) {
+                if (MIDIKeyHelper.IsWhiteKey(i)) {
+                    int whiteKeyOffsetIndex =
+                        MIDIKeyHelper.WhiteKeyIndex(i) -
+                        MIDIKeyHelper.WhiteKeyIndex(Configurations.StartKey);
+
+                    ds.FillRectangle(
+                        whiteKeyOffsetIndex * whiteKeyWidthFull,
+                        emptySpace,
+                        whiteKeyWidth,
+                        whiteKeyHeight,
+                        LookupWhiteKeyBrush(RendererViewModel.KeysPressed[i])
+                    );
+                }
             }
 
             // draw black keys
-            for (int i = 0; i < ViewModel.PseudoBlackKeyCount; ++i) {
-                if (ViewModel.BlackKeyPositions[i]) {
+            for (int i = Configurations.StartKey; i < Configurations.EndKey - 1; ++i) {
+                if (MIDIKeyHelper.IsBlackKey(i)) {
+                    int blackKeyOffsetIndex =
+                        MIDIKeyHelper.PseudoBlackKeyIndex(i - 1) -
+                        MIDIKeyHelper.PseudoBlackKeyIndex(Configurations.StartKey);
+
                     ds.FillRectangle(
-                        (i + 1) * whiteKeyWidthFull - blackKeyWidth * 0.5f - whiteKeyGap * 0.5f,
-                        height - whiteKeyHeight,
+                        (blackKeyOffsetIndex + 1) * whiteKeyWidthFull - blackKeyWidth * 0.5f - whiteKeyGap * 0.5f,
+                        emptySpace,
                         blackKeyWidth,
                         blackKeyHeight,
-                        LookupBlackKeyBrush(pseudoBlackKeysPressed[i])
+                        LookupBlackKeyBrush(RendererViewModel.KeysPressed[i])
                     );
                 }
             }
@@ -210,22 +380,135 @@ namespace NotesInColor {
             // draw signature red line
             ds.FillRectangle(
                 0.0f,
-                height - whiteKeyHeight - signatureRedLineHeight,
+                emptySpace - signatureRedLineHeight,
                 width,
                 signatureRedLineHeight,
                 Color.FromArgb(0xFF, 0x50, 0x00, 0x00)
             );
         }
 
-        private void OnCanvasResize(object? sender, SizeChangedEventArgs e) {
-            width = (float)canvasSwapChainPanel.ActualWidth + whiteKeyGap; // note for myself
-            height = (float)canvasSwapChainPanel.ActualHeight;
+        /**
+         * Draws the rhythm game feedback.
+         */
+        private void DrawFeedback(CanvasDrawingSession ds) {
+            float y = emptySpace - signatureRedLineHeight - 16;
 
-            canvasSwapChainPanel.SwapChain.ResizeBuffers(e.NewSize);
+            for (int i = 0; i < 128; ++i) {
+                var time = (float)visibleFeedback[i].elapsedTime;
+                var key = visibleFeedback[i].feedback.Key;
+                var type = visibleFeedback[i].feedback.FeedbackType;
 
-            UpdateBrushes();
+                if (type == PracticeModeFeedbackType.None)
+                    continue;
+
+                bool isWhiteKey = MIDIKeyHelper.IsWhiteKey(key);
+                int colorKey = isWhiteKey ? (
+                    MIDIKeyHelper.WhiteKeyIndex(key) -
+                    MIDIKeyHelper.WhiteKeyIndex(Configurations.StartKey)
+                ) : (
+                    MIDIKeyHelper.PseudoBlackKeyIndex(key - 1) -
+                    MIDIKeyHelper.PseudoBlackKeyIndex(Configurations.StartKey)
+                );
+
+                float x = isWhiteKey
+                    ? (0.5f + colorKey) * whiteKeyWidthFull - 0.5f * whiteKeyGap
+                    : (1.0f + colorKey) * whiteKeyWidthFull - 0.5f * whiteKeyGap;
+
+                float dy = 0;
+                if (time < 0.2f) {
+                    dy = (time - 0.1f) / 0.1f;
+                    dy = (dy * dy - 1.0f) * 4.0f;
+                } else if (time > 0.7f) {
+                    dy = (time - 0.7f) / 0.05f;
+                    dy *= dy * 16.0f;
+                }
+
+                float hw = 128.0f;
+
+                Color color = type switch {
+                    PracticeModeFeedbackType.Perfect => Color.FromArgb(255, 61, 177, 255),
+                    PracticeModeFeedbackType.Good => Color.FromArgb(255, 0, 255, 0),
+                    PracticeModeFeedbackType.Miss => Color.FromArgb(255, 255, 0, 0),
+                    _ => throw new NotImplementedException("bug")
+                };
+
+                CanvasGeometry geometry = type switch {
+                    PracticeModeFeedbackType.Perfect => perfectFeedbackTextGeometry,
+                    PracticeModeFeedbackType.Good => goodFeedbackTextGeometry,
+                    PracticeModeFeedbackType.Miss => missFeedbackTextGeometry,
+                    _ => throw new NotImplementedException("bug")
+                };
+
+                ds.DrawGeometry(
+                    geometry,
+                    x - hw,
+                    y + dy,
+                    Colors.Black,
+                    4
+                );
+                ds.FillGeometry(
+                    geometry,
+                    x - hw,
+                    y + dy,
+                    color
+                );
+            }
         }
 
+        /**
+         * Draws the FPS.
+         */
+        private void DrawFPS(CanvasDrawingSession ds) {
+            //ds.FillRoundedRectangle(10, 25 - (fpsEase - 1.0f) * 4.0f, 150, 40, 4, 4, Color.FromArgb((byte)(fpsEase * 64.0f), 0, 0, 0));
+            //ds.DrawText($"FPS: {fps}", 20, 30 - (fpsEase - 1.0f) * 4.0f, Color.FromArgb((byte)(fpsEase * 255.0f), 255, 255, 255), canvasTextFormat);
+
+            if (fpsEase < 0.01f)
+                return;
+
+            // create geometry
+            using var layout = new CanvasTextLayout(ds, string.Intern($"FPS: {fps}"), canvasTextFormat, 512, 0);
+            using var geometry = CanvasGeometry.CreateText(layout);
+
+            ds.DrawGeometry(geometry, 20, 30 - (fpsEase - 1.0f) * 4.0f, Color.FromArgb((byte)(fpsEase * 255.0f), 0, 0, 0), 2);
+            ds.FillGeometry(geometry, 20, 30 - (fpsEase - 1.0f) * 4.0f, Color.FromArgb((byte)(fpsEase * 255.0f), 255, 255, 255));
+        }
+
+        /**
+         * Whenever feedback is obtained...
+         */
+        private void OnFeedback(PracticeModeFeedback feedback) {
+            visibleFeedback[feedback.Key] = (feedback, 0.0);
+        }
+
+        /**
+         * Updates necessary things on canvas resize. This recomputes width- and height-based properties.
+         */
+        private void OnCanvasResize(object? sender, SizeChangedEventArgs args) {
+            UpdateDimensions(args.NewSize);
+            UpdateNoteColorBrushFormatProperties();
+        }
+
+        /**
+         * Updates dimensions.
+         */
+        private void UpdateDimensions(Size newSize) {
+            // add the whiteKeyGap here to eliminate the rightmost gap
+            width = (float)newSize.Width + whiteKeyGap;
+            height = (float)newSize.Height;
+
+            canvasSwapChainPanel.SwapChain.ResizeBuffers(newSize);
+        }
+
+        /**
+         * This function should be invoked when anything about the note colors changes.
+         */
+        private void OnNoteColorsCollectionChanged(object? sender, NotifyCollectionChangedEventArgs args) {
+            UpdateNoteColorBrushFormatProperties();
+        }
+
+        /**
+         * Note color lookup functions.
+         */
         private Color LookupNoteColor(int track) =>
             noteColorLookup[track % noteColorLookup.Length];
 
@@ -241,6 +524,9 @@ namespace NotesInColor {
         private CanvasLinearGradientBrush LookupBlackKeyBrush(int track) =>
             track == -1 ? blackKeyBrush : pianoBlackKeyBrushes[track % pianoBlackKeyBrushes.Length];
 
+        /**
+         * Darkens a color.
+         */
         private static Color Darken(Color color, double factor = 0.75) {
             return Color.FromArgb(
                 color.A,
@@ -249,7 +535,10 @@ namespace NotesInColor {
                 (byte)(color.B * factor));
         }
 
-        private void UpdateBrushes() {
+        /**
+         * Updates note colors, brushes, and formats.
+         */
+        private void UpdateNoteColorBrushFormatProperties() {
             whiteKeyBrush?.Dispose();
             blackKeyBrush?.Dispose();
             fadeBrush?.Dispose();
@@ -257,8 +546,7 @@ namespace NotesInColor {
                 brush?.Dispose();
             foreach (var brush in pianoBlackKeyBrushes)
                 brush?.Dispose();
-
-            float blackKeyHeight = whiteKeyHeight * blackKeyHeightRatio;
+            canvasTextFormat?.Dispose();
 
             var whiteKey = new CanvasGradientStop[] {
                 new() { Position = 0, Color = Color.FromArgb(0xFF, 0xFF, 0xFF, 0xFF) },
@@ -284,6 +572,11 @@ namespace NotesInColor {
                 EndPoint = new Vector2(0, 0)
             };
 
+            noteColorLookup = new Color[Configurations.NoteColors.Count];
+            for (int i = 0; i < Configurations.NoteColors.Count; ++i) {
+                noteColorLookup[i] = (Color)ColorRGBToColorConverter.Convert(Configurations.NoteColors[i].ColorRGB, null!, null!, null!);
+            }
+
             noteDarkColorLookup = new Color[noteColorLookup.Length];
             noteDarkerColorLookup = new Color[noteColorLookup.Length];
             pianoWhiteKeyBrushes = new CanvasLinearGradientBrush[noteColorLookup.Length];
@@ -306,6 +599,8 @@ namespace NotesInColor {
                 pianoBlackKeyBrushes[i].StartPoint = new Vector2(0.0f, height - whiteKeyHeight);
                 pianoBlackKeyBrushes[i].EndPoint = new Vector2(0.0f, height - whiteKeyHeight + blackKeyHeight);
             }
+
+            canvasTextFormat = new() { FontFamily = "Segoe UI Variable", FontSize = 20, FontWeight = new Windows.UI.Text.FontWeight(500) };
         }
     }
 }

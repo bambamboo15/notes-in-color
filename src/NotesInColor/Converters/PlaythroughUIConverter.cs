@@ -22,12 +22,18 @@ public class PlaythroughUIConverter {
     private static SolidColorBrush EnabledBrush => (SolidColorBrush)Application.Current.Resources["TextFillColorPrimaryBrush"];
     private static SolidColorBrush DisabledBrush => (SolidColorBrush)Application.Current.Resources["AccentTextFillColorDisabledBrush"];
 
+    private static readonly string playToolTip = "Play (Space)";
+    private static readonly string pauseToolTip = "Pause (Space)";
+
     public static FontIcon PlayButton(bool value) =>
         value ? pauseIcon : playIcon;
 
     public static string PlayButtonToolTip(bool value) =>
-        value ? "Play (Ctrl+P)" : "Pause (Ctrl+P)";
+        value ? playToolTip : pauseToolTip;
 
     public static SolidColorBrush BoolToBrush(bool value) =>
         value ? EnabledBrush : DisabledBrush;
+
+    public static double BoolToEnabledOpacity(bool value) =>
+        value ? 1.0 : 0.4;
 }

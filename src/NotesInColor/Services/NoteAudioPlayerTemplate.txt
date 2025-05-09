@@ -1,0 +1,58 @@
+﻿/**
+ *                    Notes in Color
+ *            A project by Benyamin Bamburac
+ * 
+ * This project is a modern MIDI file player and visualizer
+ * with some MIDI controller support.
+ */
+
+using System;
+using System.IO;
+using System.Threading.Tasks;
+using NotesInColor.Services;
+using System.Diagnostics;
+using System.Threading.Channels;
+using NotesInColor.Core;
+using DryWetMidiCore = Melanchall.DryWetMidi.Core;
+using System.Runtime.InteropServices;
+
+namespace NotesInColor.Services;
+
+public class NoteAudioPlayer : INoteAudioPlayer {
+    public double Volume {
+        get => volume;
+        set {
+            Debug.Assert(value >= 0.0 && value <= 1.0);
+
+            if (volume != value) {
+                volume = value;
+                //
+            }
+        }
+    }
+    public double volume;
+
+    public NoteAudioPlayer() {
+        //
+    }
+
+    public void Restart() {
+        //
+    }
+
+    public void Play(int noteNumber, int channel, int velocity) {
+        //
+    }
+
+    public void PlayNonNoteTimedEvent(NonNoteTimedEventData nonNoteTimedEventData) {
+        //
+    }
+
+    public void AllNotesOff() {
+        //
+    }
+
+    public void Update() {
+        //
+    }
+}

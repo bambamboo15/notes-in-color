@@ -13,7 +13,7 @@ namespace NotesInColor.Services;
 public class SettingsManager : ISettingsManager {
     private readonly ApplicationDataContainer localSettings = ApplicationData.Current.LocalSettings;
 
-    public object this[string key] {
+    public object? this[string key] {
         get => localSettings.Values[key];
         set => localSettings.Values[key] = value;
     }

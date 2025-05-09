@@ -1,0 +1,33 @@
+<?xml version="1.0" encoding="utf-8"?>
+<UserControl
+    x:Class="NotesInColor.Views.Dialogs.JustBeforePracticeModeDialog"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:local="using:NotesInColor.Views.Dialogs"
+    xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+    xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+    mc:Ignorable="d"
+    Background="Transparent">
+
+    <!-- ContentDialog that shows up just before practice mode -->
+    <Grid>
+        <StackPanel Orientation="Vertical" MaxWidth="420">
+            <TextBlock TextWrapping="Wrap"
+                       Text="You're about to start practicing a song. You will be scored!" />
+
+            <TextBlock FontWeight="SemiBold" FontSize="18"
+                       Margin="0,16,0,8"
+                       Text="Note" />
+            
+            <TextBlock TextWrapping="Wrap"
+                       Text="&quot;Practice Mode&quot; is an incredibly basic mode with simple rhythm game mechanics and feedback. In fact, it's too simple, not taking into account things like velocity, overlapping notes, or note release. This is only meant to be a fun test of accuracy and precision. Enjoy!" />
+
+            <TextBlock FontWeight="SemiBold" FontSize="18"
+                       Margin="0,16,0,8"
+                       Text="Warning" />
+
+            <TextBlock TextWrapping="Wrap"
+                       Text="Some physical MIDI-supporting pianos have a &quot;layered&quot; mode. This causes two Note On events to be sent per note instead of one, which results in misses every time. If you have layered mode on, turn it off." />
+        </StackPanel>
+    </Grid>
+</UserControl>

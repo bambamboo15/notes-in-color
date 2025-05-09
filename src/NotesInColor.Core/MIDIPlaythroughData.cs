@@ -13,7 +13,7 @@ using System.ComponentModel;
 using System.Diagnostics;
 using CommunityToolkit.Mvvm.ComponentModel;
 using System.Reflection;
-using static System.Runtime.InteropServices.JavaScript.JSType;
+using System.Security.AccessControl;
 
 namespace NotesInColor.Core;
 
@@ -42,14 +42,16 @@ public partial class MIDIPlaythroughData : ObservableObject {
     public double Progress {
         get => progress;
         private set {
-            if (value >= Duration)
-                Playing = false;
-
             if (SetProperty(ref progress, Math.Clamp(value, -WarmupTimeSeconds, Duration))) {
                 currentMicroseconds = (long)(progress * 1000000.0);
 
+                // TODO: Non-note event and note event with same Time, respect order then
+                ProcessNonNoteTimedEvents();
                 RecomputeNotes();
             }
+
+            if (value >= Duration)
+                ReachedEnd();
         }
     }
     private double progress = 0.0;
@@ -104,6 +106,16 @@ public partial class MIDIPlaythroughData : ObservableObject {
     public event Action<NoteData, bool>? NoteChanged;
 
     /**
+     * What is the current NonNoteTimedEventData
+     */
+    private Dictionary<int, NonNoteTimedEventData>[] LastNonNoteTimedEvent = EmptyLastNonNoteTimedEvent();
+
+    /**
+     * An event for when a NonNoteTimedEventData event fires
+     */
+    public event Action<NonNoteTimedEventData>? NonNoteTimedEvent;
+
+    /**
      * Event for when a composition is loaded
      */
     public event Action? OnLoaded;
@@ -131,6 +143,17 @@ public partial class MIDIPlaythroughData : ObservableObject {
      */
     private long currentMicroseconds = 0;                           // current number of microseconds during playthrough
     private long currentMicrosecondsFromQueue = 0;                  // current number of microseconds synced with queue
+    private long currentMicrosecondsNonNoteTimedEvent = 0;          // current number of microseconds synced with non-note timed event
+    private int lastNonNoteTimedEventIndex = 0;                     // last NonNoteTimedEventData index
+
+    /**
+     * Is Practice Mode enabled?
+     */
+    public bool PracticeMode {
+        get => practiceMode;
+        private set => SetProperty(ref practiceMode, value);
+    }
+    private bool practiceMode = false;
 
     /**
      * Step FORWARDS by the amount of delta time, in seconds, IF PLAYING.
@@ -154,17 +177,19 @@ public partial class MIDIPlaythroughData : ObservableObject {
     /**
      * Loads a composition from MIDIFileData and starts playing.
      */
-    public void Load(MIDIFileData data) {
+    public void Load(MIDIFileData data, bool practiceMode = false, bool startPlaying = true) {
         this.data = data;
         NotesPlaying = NotesPlayingTracks(data.Tracks);
         NotesPlayingPrev = NotesPlayingTracks(data.Tracks);
+        LastNonNoteTimedEvent = EmptyLastNonNoteTimedEvent();
         ScreenStartIndex = 0;
         ScreenEndIndex = 0;
-        Duration = data.Duration;
         Progress = -WarmupTimeSeconds;
-        Playing = true;
+        Duration = data.Duration;
+        Playing = startPlaying;
         IsLoaded = true;
 
+        PracticeMode = practiceMode;
         OnLoaded?.Invoke();
     }
 
@@ -264,7 +289,7 @@ public partial class MIDIPlaythroughData : ObservableObject {
 
             for (int j = 1; j < Tracks; ++j) {
                 NoteData note = NotesPlaying[i, j];
-                if (note.Time >= maxTimeNote.Time)
+                if (maxTimeNote.IsNull || (!note.IsNull && note.Time >= maxTimeNote.Time))
                     maxTimeNote = note;
             }
 
@@ -292,6 +317,87 @@ public partial class MIDIPlaythroughData : ObservableObject {
                 prev = cur;
             }
         }
+    }
+
+    /**
+     * This function processes Program Change events.
+     */
+    private void ProcessNonNoteTimedEvents() {
+        if (currentMicroseconds < currentMicrosecondsNonNoteTimedEvent) {
+            for (int channel = 0; channel < 16; ++channel) {
+                ref Dictionary<int, NonNoteTimedEventData> lastNonNoteTimedEventDict = ref LastNonNoteTimedEvent[channel];
+
+                foreach (int type in lastNonNoteTimedEventDict.Keys)
+                    lastNonNoteTimedEventDict[type] = NonNoteTimedEventData.Null;
+            }
+            lastNonNoteTimedEventIndex = 0;
+        }
+        currentMicrosecondsNonNoteTimedEvent = currentMicroseconds;
+
+        for (int channel = 0; channel < 16; ++channel) {
+            ref Dictionary<int, NonNoteTimedEventData> lastNonNoteTimedEventDict = ref LastNonNoteTimedEvent[channel];
+
+            for (int index = lastNonNoteTimedEventIndex; index < Data!.NonNoteTimedEvents.Length; ++index) {
+                NonNoteTimedEventData nonNoteTimedEvent = Data!.NonNoteTimedEvents[index];
+                if (nonNoteTimedEvent.Time > currentMicroseconds)
+                    break;
+
+                lastNonNoteTimedEventIndex = index;
+
+                int leafType = nonNoteTimedEvent.TimedEvent.Event.GetType().GetHashCode();
+                if (lastNonNoteTimedEventDict.TryGetValue(leafType, out NonNoteTimedEventData lastNonNoteTimedEvent))
+                    //if (lastNonNoteTimedEvent.IsNull || (nonNoteTimedEvent.Time > lastNonNoteTimedEvent.Time))
+                        NonNoteTimedEvent?.Invoke(lastNonNoteTimedEventDict[leafType] = nonNoteTimedEvent);
+            }
+        }
+    }
+
+    /**
+     * Triggers when the end of the loaded composition is reached (Progress >= Duration).
+     */
+    private void ReachedEnd() {
+        for (int i = 0; i < 128; ++i)
+            for (int j = 0; j < Tracks; ++j)
+                NotesPlaying[i, j] = NoteData.Null;
+
+        for (int i = 0; i < 128; ++i)
+            KeysPlaying[i] = NoteData.Null;
+
+        for (int i = 0; i < 128; ++i) {
+            for (int j = 0; j < Tracks; ++j) {
+                ref NoteData prev = ref NotesPlayingPrev[i, j];
+
+                if (!prev.IsNull)
+                    NoteChanged?.Invoke(prev, false);
+
+                prev = NoteData.Null;
+            }
+        }
+
+        Playing = false;
+    }
+
+    private static Dictionary<int, NonNoteTimedEventData>[] EmptyLastNonNoteTimedEvent() {
+        var output = new Dictionary<int, NonNoteTimedEventData>[16];
+
+        for (int channel = 0; channel < 16; ++channel) {
+            var dict = new Dictionary<int, NonNoteTimedEventData>();
+
+            // reflection
+            var derivedTypes = Assembly
+                .GetAssembly(typeof(MidiEvent))!
+                .GetTypes()
+                .Where(t => t.IsClass && !t.IsAbstract && t.IsSubclassOf(typeof(MidiEvent)))
+                .Select(t => t.GetHashCode())
+                .ToList();
+
+            foreach (int type in derivedTypes)
+                dict[type] = NonNoteTimedEventData.Null;
+
+            output[channel] = dict;
+        }
+
+        return output;
     }
 
     private static NoteData[,] NotesPlayingTracks(int tracks) {

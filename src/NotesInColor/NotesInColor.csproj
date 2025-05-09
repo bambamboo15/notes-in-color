@@ -11,7 +11,12 @@
     <UseWinUI>true</UseWinUI>
     <EnableMsixTooling>true</EnableMsixTooling>
     <Nullable>enable</Nullable>
-	  <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+	<AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+    <BuildInParallel>true</BuildInParallel>
+
+	  <DebugType Condition="'$(Configuration)' != 'Debug'">none</DebugType>
+	  <Optimize Condition="'$(Configuration)' != 'Debug'">true</Optimize>
+	  <PublishReadyToRun Condition="'$(Configuration)' != 'Debug'">true</PublishReadyToRun>
   </PropertyGroup>
   <ItemGroup>
     <Content Remove="Assets\LargeTile.scale-100.png" />
@@ -68,6 +73,7 @@
     <None Remove="Assets\SplashScreen.scale-400.png" />
     <None Remove="Assets\StoreLogo.scale-400.png" />
     <None Remove="bassmidi.dll" />
+    <None Remove="Views\Dialogs\PracticeModeStatsDialog.xaml" />
     <None Remove="Views\MainPage.xaml" />
     <None Remove="Views\RendererControl.xaml" />
     <None Remove="Views\SettingsPage.xaml" />
@@ -100,6 +106,7 @@
   </ItemGroup>
   <ItemGroup>
     <PackageReference Include="CommunityToolkit.WinUI.Controls.SettingsControls" Version="8.2.250402" />
+    <PackageReference Include="CommunityToolkit.WinUI.Converters" Version="8.2.250402" />
     <PackageReference Include="ManagedBass" Version="3.1.1" />
     <PackageReference Include="ManagedBass.Midi" Version="3.1.1" />
     <PackageReference Include="Microsoft.Extensions.DependencyInjection" Version="9.0.4" />
@@ -112,6 +119,16 @@
     <ProjectReference Include="..\NotesInColor.ViewModel\NotesInColor.ViewModel.csproj" />
   </ItemGroup>
   <ItemGroup>
+    <Page Update="Views\Dialogs\PracticeModeStatsDialog.xaml">
+      <Generator>MSBuild:Compile</Generator>
+    </Page>
+  </ItemGroup>
+  <ItemGroup>
+    <Page Update="Views\Dialogs\InputDevicePropertiesDialog.xaml">
+      <Generator>MSBuild:Compile</Generator>
+    </Page>
+  </ItemGroup>
+  <ItemGroup>
     <Page Update="Views\MainPage.xaml">
       <Generator>MSBuild:Compile</Generator>
     </Page>
@@ -119,6 +136,11 @@
       <Generator>MSBuild:Compile</Generator>
     </Page>
     <Page Update="Views\SettingsPage.xaml">
+      <Generator>MSBuild:Compile</Generator>
+    </Page>
+  </ItemGroup>
+  <ItemGroup>
+    <Page Update="Views\Dialogs\JustBeforePracticeModeDialog.xaml">
       <Generator>MSBuild:Compile</Generator>
     </Page>
   </ItemGroup>
@@ -132,17 +154,12 @@
     <HasPackageAndPublishMenu>true</HasPackageAndPublishMenu>
   </PropertyGroup>
 
-	<PropertyGroup>
-		<DebugType>full</DebugType>
-		<Optimize>false</Optimize>
-	</PropertyGroup>
-
   <!-- Publish Properties -->
   <PropertyGroup>
     <PublishReadyToRun Condition="'$(Configuration)' == 'Debug'">False</PublishReadyToRun>
     <PublishReadyToRun Condition="'$(Configuration)' != 'Debug'">True</PublishReadyToRun>
     <PublishTrimmed Condition="'$(Configuration)' == 'Debug'">False</PublishTrimmed>
-    <PublishTrimmed Condition="'$(Configuration)' != 'Debug'">True</PublishTrimmed>
+    <PublishTrimmed Condition="'$(Configuration)' != 'Debug'">False</PublishTrimmed>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x86'">
     <WarningLevel>9999</WarningLevel>

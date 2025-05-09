@@ -41,6 +41,15 @@ public partial class PlaythroughViewModel : ObservableObject {
     private bool enabled = false;
 
     /**
+     * Is this enabled, and there has been no practice mode?
+     */
+    public bool EnabledNoPracticeMode {
+        get => enabledNoPracticeMode;
+        private set => SetProperty(ref enabledNoPracticeMode, value);
+    }
+    private bool enabledNoPracticeMode;
+
+    /**
      * The progress normalized between 0.0 and 1.0
      */
     [ObservableProperty]
@@ -72,15 +81,6 @@ public partial class PlaythroughViewModel : ObservableObject {
     public double normalizedNoteLength = 0.5;
 
     /**
-     * Screen height minimum and maximum values
-     * 
-     * Sorry for the confusing naming, but this is just normalized note length
-     * with some transformations
-     */
-    public double minScreenHeightSeconds = 0.25;
-    public double maxScreenHeightSeconds = 4.0;
-
-    /**
      * The normalized tempo
      */
     [ObservableProperty]
@@ -108,6 +108,8 @@ public partial class PlaythroughViewModel : ObservableObject {
                 Enabled = MIDIPlaythroughData.IsLoaded;
             } else if (e.PropertyName == nameof(MIDIPlaythroughData.Duration)) {
                 Duration = MIDIPlaythroughData.Duration;
+            } else if (e.PropertyName == nameof(MIDIPlaythroughData.PracticeMode)) {
+                EnabledNoPracticeMode = Enabled && !MIDIPlaythroughData.PracticeMode;
             }
         };
     }
@@ -140,8 +142,7 @@ public partial class PlaythroughViewModel : ObservableObject {
     }
 
     partial void OnNormalizedNoteLengthChanged(double value) {
-        MIDIPlaythroughData.ScreenHeightSeconds =
-            maxScreenHeightSeconds - (maxScreenHeightSeconds - minScreenHeightSeconds) * value;
+        MIDIPlaythroughData.ScreenHeightSeconds = Math.Pow(2.0, 1.0 + ((0.5 - value) * 4.0));
     }
 
     partial void OnNormalizedTempoChanged(double value) {
@@ -152,10 +153,14 @@ public partial class PlaythroughViewModel : ObservableObject {
         NoteAudioPlayer.Volume = value;
     }
 
+    partial void OnEnabledChanged(bool value) {
+        EnabledNoPracticeMode = Enabled && !MIDIPlaythroughData.PracticeMode;
+    }
+
     private static string FormattedTime(double totalSeconds) =>
-        totalSeconds >= 0.0
+        string.Intern(totalSeconds >= 0.0
             ? $"{((int)Math.Floor(totalSeconds) / 60)}:{((int)Math.Floor(totalSeconds) % 60):D2}"
-            : $"-{((int)Math.Ceiling(-totalSeconds) / 60)}:{((int)Math.Ceiling(-totalSeconds) % 60):D2}";
+            : $"-{((int)Math.Ceiling(-totalSeconds) / 60)}:{((int)Math.Ceiling(-totalSeconds) % 60):D2}");
 
     /**
      * Advances playthrough by the specified number of seconds.
@@ -167,8 +172,6 @@ public partial class PlaythroughViewModel : ObservableObject {
      * Toggle play/pause
      */
     [RelayCommand]
-    private void TogglePlayPause() {
-        if (!(Playing = !Playing))
-            NoteAudioPlayer.AllNotesOff();
-    }
+    private void TogglePlayPause() =>
+        Playing = !Playing;
 }

@@ -12,5 +12,5 @@ public interface ISettingsManager {
     /**
      * Manages settings in internal application-specific storage.
      */
-    public object this[string key] { get; set; }
+    public object? this[string key] { get; set; }
 }

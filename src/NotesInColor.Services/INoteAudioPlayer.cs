@@ -6,6 +6,8 @@
  * with some MIDI controller support.
  */
 
+using NotesInColor.Core;
+
 namespace NotesInColor.Services;
 
 public interface INoteAudioPlayer {
@@ -15,9 +17,21 @@ public interface INoteAudioPlayer {
     public double Volume { get; set; }
 
     /**
-     * Plays a note.
+     * Presses or releases a note.
+     * 
+     * Velocity: 0 = RELEASE, 1-127 = PRESS
      */
     public void Play(int noteNumber, int track, int velocity);
+
+    /**
+     * Executes a NonNoteTimedEvent event.
+     */
+    public void PlayNonNoteTimedEvent(NonNoteTimedEventData nonNoteTimedEvent);
+
+    /**
+     * Kaboom!!! (Call this on every song load)
+     */
+    public void Restart();
 
     /**
      * Update. This has to be called at least once per frame.

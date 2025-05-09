@@ -26,13 +26,16 @@ using NotesInColor.Services;
 using Microsoft.Windows.AppLifecycle;
 using NotesInColor.Core;
 using System.ComponentModel;
+using Microsoft.UI.Input;
+using Microsoft.UI.Xaml.Media.Animation;
+using WinUIEx;
 
 namespace NotesInColor {
     /**
      * This is the settings page.
      */
     public sealed partial class SettingsPage : Page {
-        public readonly SettingsPageViewModel ViewModel = App.Current.Services.GetRequiredService<SettingsPageViewModel>(); // anti-pattern :(
+        public SettingsPageViewModel ViewModel { get; private set; } = App.Current.Services.GetRequiredService<SettingsPageViewModel>(); // anti-pattern :(
         private readonly ISettingsManager settingsManager = App.Current.Services.GetRequiredService<ISettingsManager>(); // more anti-pattern :(
 
         public SettingsPage() {
@@ -57,6 +60,8 @@ namespace NotesInColor {
                     endWhiteKeyComboBox.SelectedIndex = ViewModel.EndWhiteKey;
                 }
             };
+
+            DataContext = this;
         }
 
         private void OnLoaded(object? sender, object e) {
@@ -79,11 +84,12 @@ namespace NotesInColor {
                         _ => throw new NotImplementedException("that wasn't supposed to happen")
                     };
 
-                    if ((string)settingsManager["theme"] != updatedTheme) {
+                    if (settingsManager["theme"] is string theme && theme != updatedTheme) {
                         settingsManager["theme"] = updatedTheme;
 
-                        // close and reopen application
-                        AppInstance.Restart("");
+                        if (App.Current.Window is MainWindow mainWindow) {
+                            mainWindow.UpdateTheme();
+                        }
                     }
                 }
             }
@@ -91,6 +97,9 @@ namespace NotesInColor {
 
         private void Restore88KeyLayout(object sender, RoutedEventArgs e) =>
             ViewModel.Configurations.Restore88KeyLayout();
+
+        private void ApplyNotesInColorTheme(object sender, RoutedEventArgs e) =>
+            ViewModel.Configurations.ApplyNotesInColorTheme();
 
         private void StartWhiteKeyComboBox_DropDownClosed(object sender, object e) {
             ComboBox comboBox = (sender as ComboBox)!;
@@ -104,6 +113,71 @@ namespace NotesInColor {
 
             ViewModel.EndWhiteKey = comboBox.SelectedIndex;
             comboBox.SelectedIndex = ViewModel.EndWhiteKey;
+        }
+
+        /**
+         * ===========================================================================================================
+         * 
+         *                please ignore whatever is after this section. it's just not MVVM. thank you
+         *          
+         * ===========================================================================================================
+         */
+
+        private Border? lastTappedBorder;
+        private Flyout? lastOpenedFlyout;
+        private void NoteColorBorderTapped(object sender, TappedRoutedEventArgs args) {
+            var border = (Border)sender;
+            var flyout = (Flyout)border.ContextFlyout;
+            flyout.ShowAt(border);
+
+            lastTappedBorder = border;
+            lastOpenedFlyout = flyout;
+        }
+
+        private void NoteColorBorderFlyoutClosed(object sender, object args) {
+            if (lastTappedBorder is Border border) {
+                var animation = new DoubleAnimation { To = 1.0, Duration = new Duration(TimeSpan.FromMilliseconds(200)) };
+                var storyboard = new Storyboard();
+                Storyboard.SetTarget(animation, border);
+                Storyboard.SetTargetProperty(animation, "Opacity");
+                storyboard.Children.Add(animation);
+                storyboard.Begin();
+            }
+        }
+
+        private void NoteColorBorderPointerEntered(object sender, PointerRoutedEventArgs args) {
+            if (sender is not Border border)
+                return;
+
+            var animation = new DoubleAnimation { To = 0.6, Duration = new Duration(TimeSpan.FromMilliseconds(200)) };
+            var storyboard = new Storyboard();
+            Storyboard.SetTarget(animation, border);
+            Storyboard.SetTargetProperty(animation, "Opacity");
+            storyboard.Children.Add(animation);
+            storyboard.Begin();
+        }
+
+        private void NoteColorBorderPointerExited(object sender, PointerRoutedEventArgs args) {
+            if (sender is not Border border)
+                return;
+
+            if (((Flyout)border.ContextFlyout).IsOpen)
+                return;
+
+            var animation = new DoubleAnimation { To = 1.0, Duration = new Duration(TimeSpan.FromMilliseconds(200)) };
+            var storyboard = new Storyboard();
+            Storyboard.SetTarget(animation, border);
+            Storyboard.SetTargetProperty(animation, "Opacity");
+            storyboard.Children.Add(animation);
+            storyboard.Begin();
+        }
+
+        /**
+         * Already said bye to good MVVM a while ago
+         */
+        private void NoteColorAdd(object sender, RoutedEventArgs args) {
+            lastOpenedFlyout?.Hide();
+            ViewModel.NoteColorAddCommand.Execute((lastOpenedFlyout?.Content as FrameworkElement)?.DataContext);
         }
     }
 }

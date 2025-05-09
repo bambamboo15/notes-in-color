@@ -33,6 +33,10 @@ using System.Diagnostics;
 using System.Threading.Tasks;
 using Windows.Data.Xml.Dom;
 using System.Runtime.CompilerServices;
+using Windows.UI.StartScreen;
+using WinUIEx;
+using Microsoft.UI.Composition.SystemBackdrops;
+using Microsoft.UI.Xaml.Media.Animation;
 
 namespace NotesInColor {
     public sealed partial class App : Application {
@@ -43,7 +47,6 @@ namespace NotesInColor {
             this.InitializeComponent();
 
             Services = ConfigureServices();
-
             LoadSettings();
 
             // catch unhandled exceptions
@@ -77,13 +80,20 @@ namespace NotesInColor {
             services.AddSingleton<PlaythroughViewModel>();
             services.AddSingleton<PlaythroughInfoViewModel>();
             services.AddSingleton<AudioViewModel>();
+            services.AddSingleton<PracticeModeViewModel>();
 
             services.AddSingleton<IRequestMIDIFile, RequestMIDIFile>();
             services.AddSingleton<INavigator, Navigator>();
             services.AddSingleton<ISettingsManager, SettingsManager>();
             services.AddSingleton<INoteAudioPlayer, NoteAudioPlayer>();
+            services.AddSingleton<IInputDeviceManager, InputDeviceManager>();
+            services.AddSingleton<
+                ITryToInitiateAndCompleteTheProcessOfShowingTheDisplayOfSomethingThatCouldBeCalledWhateverContentDialog,
+                TryToInitiateAndCompleteTheProcessOfShowingTheDisplayOfSomethingThatCouldBeCalledWhateverContentDialog
+            >();
 
             services.AddSingleton<MIDIPlaythroughData>();
+            services.AddSingleton<PracticeModeModel>();
             services.AddSingleton<Configurations>();
 
             return services.BuildServiceProvider();
@@ -92,7 +102,35 @@ namespace NotesInColor {
         protected override void OnLaunched(Microsoft.UI.Xaml.LaunchActivatedEventArgs args) {
             SetUpStyling();
 
+            /*
+            var window = new MainWindow(Current.Services.GetService<MainWindowViewModel>()!);
+
+            Frame mainWindowFrame = window.MainWindowFrame;
+            mainWindowFrame.NavigationFailed += OnNavigationFailed;
+            mainWindowFrame.Navigate(typeof(MainPage), args.Arguments);
+
+            var splash = new SplashScreen(window);
+            splash.Completed += (s, e) => Window = e;
+            */
+
+            /*
             Window = new MainWindow(Current.Services.GetService<MainWindowViewModel>()!);
+
+            Frame mainWindowFrame = (Window as MainWindow)!.MainWindowFrame;
+            mainWindowFrame.NavigationFailed += OnNavigationFailed;
+            mainWindowFrame.Navigate(typeof(SplashScreen), args.Arguments);
+
+            Window?.Activate();
+
+            async Task Hello() {
+                await Task.Delay(1000);
+
+                mainWindowFrame.Navigate(typeof(MainPage), null, new SuppressNavigationTransitionInfo());
+            }
+            _ = Hello();
+            */
+
+            Window = new MainWindow();
 
             Frame mainWindowFrame = (Window as MainWindow)!.MainWindowFrame;
             mainWindowFrame.NavigationFailed += OnNavigationFailed;
@@ -114,19 +152,12 @@ namespace NotesInColor {
             Configurations configurations = Current.Services.GetService<Configurations>()!;
 
             settingsManager["theme"] ??= "auto";
-
-            this.RequestedTheme = settingsManager["theme"]! switch {
-                "light" => ApplicationTheme.Light,
-                "dark" => ApplicationTheme.Dark,
-                "auto" => this.RequestedTheme,
-                _ => throw new NotImplementedException("bug")
-            };
         }
 
         void OnNavigationFailed(object sender, NavigationFailedEventArgs args) {
             throw new Exception("Failed to load Page " + args.SourcePageType.FullName);
         }
 
-        static public Window? Window;
+        public Window? Window { get; private set; }
     }
 }

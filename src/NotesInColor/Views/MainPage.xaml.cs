@@ -26,16 +26,28 @@ using Windows.Storage.Pickers;
 using Microsoft.Extensions.DependencyInjection;
 using System.Diagnostics;
 using NotesInColor.Services;
+using Microsoft.UI.Input;
+using Microsoft.UI.Xaml.Media.Animation;
+using ManagedBass.Midi;
+using Windows.UI.ViewManagement;
 
 namespace NotesInColor {
     public sealed partial class MainPage : Page {
         public readonly MainPageViewModel ViewModel;
+        private readonly UISettings UISettings = new();
 
         private readonly Stopwatch stopwatch = Stopwatch.StartNew();
         private TimeSpan lastTime = TimeSpan.Zero;
 
+        private bool ProgressBarThumbDragged {
+            get => progressBarThumbDragged;
+            set {
+                progressBarThumbDragged = value;
+                ViewModel.AudioViewModel.PlaySounds = !value;
+            }
+        }
         private bool progressBarThumbDragged = false;
-        private double minFPS = 5.0;
+        private readonly double minFPS = 10.0;
 
         public MainPage() {
             this.InitializeComponent();
@@ -43,22 +55,26 @@ namespace NotesInColor {
 
             // I put this here because I wanted to decouple playthrough from Renderer. The playthrough
             // slider is here in the main page, so I put playthrough advancement code here.
+            //
+            // A huge issue, that I only realize now, is that the application pauses when dragged, and fixing
+            // that requires putting everything in a separate thread. The application is way too big for that,
+            // and the project deadline is too close, so that issue will have to stay.
             CompositionTarget.Rendering += OnRendering;
 
             // Detect slider thumb dragged
             progressBarSlider.Loaded += (_, _) => {
                 Thumb progressBarThumb = FindVisualChild<Thumb>(progressBarSlider)!;
-                progressBarThumb.DragStarted += (_, _) => progressBarThumbDragged = true;
-                progressBarThumb.DragCompleted += (_, _) => progressBarThumbDragged = false;
+                progressBarThumb.DragStarted += (_, _) => ProgressBarThumbDragged = true;
+                progressBarThumb.DragCompleted += (_, _) => ProgressBarThumbDragged = false;
 
                 progressBarSlider.AddHandler(
                     UIElement.PointerPressedEvent,
-                    new PointerEventHandler((_, _) => progressBarThumbDragged = true),
+                    new PointerEventHandler((_, _) => ProgressBarThumbDragged = true),
                     handledEventsToo: true
                 );
                 progressBarSlider.AddHandler(
                     UIElement.PointerReleasedEvent,
-                    new PointerEventHandler((_, _) => progressBarThumbDragged = false),
+                    new PointerEventHandler((_, _) => ProgressBarThumbDragged = false),
                     handledEventsToo: true
                 );
             };
@@ -72,6 +88,23 @@ namespace NotesInColor {
                 double value = adjustSpeedSlider.IntermediateValue;
                 adjustSpeedSlider.IntermediateValue = Math.Abs(value - 0.5) < 0.02 ? 0.5 : value;
             });
+
+            // spacebar pressed means play/pause button
+            PreviewKeyDown += (object sender, KeyRoutedEventArgs e) => {
+                if (e.Key == Windows.System.VirtualKey.Space) {
+                    ViewModel.PlaythroughViewModel.TogglePlayPauseCommand.Execute(null);
+
+                    e.Handled = true;
+                }
+            };
+        }
+
+        // spacebar pressed means play/pause button
+        private void SpacePressed(object sender, KeyboardAcceleratorInvokedEventArgs e) {
+            ViewModel.PlaythroughViewModel.TogglePlayPauseCommand.Execute(null);
+
+            e.Handled = true;
+
         }
 
         protected override void OnNavigatedFrom(NavigationEventArgs e) {
@@ -84,7 +117,7 @@ namespace NotesInColor {
             lastTime = now;
             double deltaTime = Math.Min(1.0 / minFPS, deltaTimeSpan.TotalSeconds);
 
-            if (!progressBarThumbDragged)
+            if (!ProgressBarThumbDragged)
                 ViewModel.PlaythroughViewModel.Next(deltaTime);
         }
 

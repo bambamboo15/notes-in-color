@@ -1,0 +1,389 @@
+﻿/**
+ *                    Notes in Color
+ *            A project by Benyamin Bamburac
+ * 
+ * This project is a modern MIDI file player and visualizer
+ * with some MIDI controller support.
+ */
+
+using System;
+using System.Collections.Generic;
+using System.IO;
+using System.Linq;
+using System.Runtime.InteropServices.WindowsRuntime;
+using Microsoft.UI.Xaml;
+using Microsoft.UI.Xaml.Controls;
+using Microsoft.UI.Xaml.Controls.Primitives;
+using Microsoft.UI.Xaml.Data;
+using Microsoft.UI.Xaml.Input;
+using Microsoft.UI.Xaml.Media;
+using Microsoft.UI.Xaml.Navigation;
+using Windows.Foundation;
+using Windows.Foundation.Collections;
+using Microsoft.UI;
+using Microsoft.UI.Windowing;
+using Microsoft.UI.Composition.SystemBackdrops;
+using WinRT.Interop;
+using Windows.UI.ViewManagement;
+using System.Reflection.Metadata;
+using System.Runtime.InteropServices;
+using System.Threading;
+using Windows.Storage.Pickers;
+using Windows.UI;
+using System.Numerics;
+using NotesInColor.ViewModel;
+using Microsoft.Extensions.DependencyInjection;
+using Windows.Devices.PointOfService;
+using Microsoft.Graphics.Canvas.UI.Xaml;
+using Microsoft.Graphics.Canvas;
+using Microsoft.Graphics.Canvas.Brushes;
+using System.Diagnostics;
+using NotesInColor.Core.Shared;
+using System.Collections;
+using System.Threading.Tasks;
+using NotesInColor.Converters;
+using Microsoft.Graphics.Canvas.Text;
+
+namespace NotesInColor {
+    /**
+     * This class deals with rendering, in what hopefully is the simplest way possible.
+     */
+    public sealed partial class RendererControl : UserControl {
+        private readonly RendererViewModel RendererViewModel;
+        private readonly PracticeModeViewModel PracticeModeViewModel;
+        private readonly ColorRGBToColorConverter ColorRGBToColorConverter;
+        private readonly Configurations Configurations;
+
+        private readonly float whiteKeyMaxHeight = 128.0f;           /* customizable */
+        private readonly float whiteKeyGap = 2.0f;                   /* customizable */
+        private readonly float blackKeyHeightRatio = 0.58f;          /* customizable */
+        private readonly float blackKeyWidthRatio = 0.53f;           /* customizable */
+
+        private float SignatureRedLineHeight => _wkhease * 3.75f;
+        private float WhiteKeyHeight => (whiteKeyMaxHeight * Math.Min(1.0f + Math.Max(height - 500.0f, 0.0f) * 0.002f, width * 0.0338f / RendererViewModel.WhiteKeyCount));
+        private float PianoTopYCoordinate => Math.Clamp((1.0f - _wkhease) * (WhiteKeyHeight + 16) + height - WhiteKeyHeight, 0.0f, height);
+
+        private float width;
+        private float height;
+
+        private Color[] noteColorLookup = [];
+        private Color[] noteDarkColorLookup = [];
+        private Color[] noteDarkerColorLookup = [];
+        private CanvasLinearGradientBrush[] pianoWhiteKeyBrushes = [];
+        private CanvasLinearGradientBrush[] pianoBlackKeyBrushes = [];
+
+        private CanvasLinearGradientBrush whiteKeyBrush = null!;
+        private CanvasLinearGradientBrush blackKeyBrush = null!;
+        private CanvasLinearGradientBrush fadeBrush = null!;
+
+        private CanvasTextFormat canvasTextFormat = null!;
+        private CanvasTextFormat feedbackTextFormat = null!;
+
+        private Stopwatch deltaTimeStopwatch = Stopwatch.StartNew();
+        private Stopwatch fpsStopwatch = Stopwatch.StartNew();
+        private int frameCount = 0;
+        private int fps = 0;
+        private double deltaTime;
+
+        private float _fpsease = 0.0f;
+        private float _wkhease = 1.0f;
+        private float _fpseasefact = 0.1f;
+        private float _wkheasefact = 0.1f;
+        private bool _fpseaseupcond => RendererViewModel.DisplayFPS;
+        private bool _wkheaseupcond => RendererViewModel.ShowPiano;
+
+        public RendererControl() {
+            this.InitializeComponent();
+
+            RendererViewModel = App.Current.Services.GetRequiredService<RendererViewModel>();
+            PracticeModeViewModel = App.Current.Services.GetRequiredService<PracticeModeViewModel>();
+            Configurations = App.Current.Services.GetRequiredService<Configurations>();
+            ColorRGBToColorConverter = new ColorRGBToColorConverter();
+
+            CanvasDevice device = CanvasDevice.GetSharedDevice();
+            CanvasSwapChain swapChain = new CanvasSwapChain(device, 100.0f, 100.0f, 96);
+            canvasSwapChainPanel.SwapChain = swapChain;
+            canvasSwapChainPanel.SizeChanged += OnCanvasResize;
+
+            Loaded += (_, _) => CompositionTarget.Rendering += Update;
+            Unloaded += (_, _) => CompositionTarget.Rendering -= Update;
+
+            UpdateNoteColorLookup();
+            UpdateBrushes();
+
+            Configurations.NoteColors.CollectionChanged += (_, _) => {
+                UpdateNoteColorLookup();
+                UpdateBrushes();
+            };
+        }
+
+        /**
+         * This gets called every rendering frame.
+         */
+        private void Update(object? sender, object e) {
+            deltaTime = deltaTimeStopwatch.ElapsedMilliseconds * 1000.0;
+
+            AssessPlayerInput();
+            ApplyEasings();
+            Draw();
+            RecomputeFPS();
+
+            deltaTimeStopwatch.Restart();
+        }
+
+        /**
+         * Assesses player input.
+         */
+        private void AssessPlayerInput() {
+            PracticeModeViewModel.AssessPlayerInput(())
+        }
+
+        /**
+         * This draws everything on the visualization area.
+         */
+        private void Draw() {
+            using (CanvasDrawingSession ds = canvasSwapChainPanel.SwapChain.CreateDrawingSession(Colors.Transparent)) {
+                using var layer = ds.CreateLayer(fadeBrush);
+
+                //
+                // This snippet of code was me attempting to make background look nice
+                //   ds.FillRectangle(0, 0, width, height, Color.FromArgb(0xFF, 0x0F, 0x0F, 0x0F));
+                //
+
+                RendererViewModel.AllObservableNotes((double start, double end, bool isWhiteKey, int colorKey, int track) =>
+                    DrawNote(ds, (float)start, (float)end, isWhiteKey, colorKey, track));
+                if (_wkhease > 0.02f)
+                    RendererViewModel.PianoForwarder((int[] whiteKeysPressed, int[] pseudoBlackKeysPressed) =>
+                        DrawPiano(ds, whiteKeysPressed, pseudoBlackKeysPressed));
+                DrawFeedback(ds);
+
+                DrawFPS(ds);
+            }
+
+            canvasSwapChainPanel.SwapChain.Present();
+        }
+
+        /**
+         * This function represents one discrete time step of adjusting certain values
+         * that are under easing.
+         */
+        private void ApplyEasings() {
+            _fpsease = Math.Clamp((1.0f - _fpseasefact) * _fpsease + (_fpseaseupcond ? _fpseasefact : 0.0f), 0.0f, 1.0f);
+            _wkhease = Math.Clamp((1.0f - _wkheasefact) * _wkhease + (_wkheaseupcond ? _wkheasefact : 0.0f), 0.0f, 1.0f);
+        }
+
+        /**
+         * Draw all of the feedback.
+         */
+        private void DrawFeedback(CanvasDrawingSession ds) {
+            /*
+            for (int key = 0; key < 128; ++key) {
+                float whiteKeyWidthFull = width / RendererViewModel.WhiteKeyCount;
+                float x = (0.5f + key) * whiteKeyWidthFull;
+
+                float y = PianoTopYCoordinate - SignatureRedLineHeight - 16;
+
+                ds.DrawText($"PERFECT!", x, y, Color.FromArgb(255, 255, 0, 0), feedbackTextFormat);
+            }
+            */
+        }
+
+        /**
+         * Draws FPS.
+         */
+        private void DrawFPS(CanvasDrawingSession ds) {
+            ds.FillRoundedRectangle(10, 25 - (_fpsease - 1.0f) * 4.0f, 150, 40, 4, 4, Color.FromArgb((byte)(_fpsease * 64.0f), 0, 0, 0));
+            ds.DrawText($"FPS: {fps}", 20, 30 - (_fpsease - 1.0f) * 4.0f, Color.FromArgb((byte)(_fpsease * 255.0f), 255, 255, 255), canvasTextFormat);
+        }
+
+        /**
+         * Draws a note.
+         */
+        private void DrawNote(CanvasDrawingSession ds, float start, float end, bool isWhiteKey, int colorKey, int track) {
+            float whiteKeyWidthFull = width / RendererViewModel.WhiteKeyCount;
+            float whiteKeyWidth = whiteKeyWidthFull - whiteKeyGap;
+            float blackKeyHeight = WhiteKeyHeight * blackKeyHeightRatio;
+            float blackKeyWidth = whiteKeyWidthFull * blackKeyWidthRatio; 
+            float space = PianoTopYCoordinate;
+
+            float x = isWhiteKey ?
+                (colorKey * whiteKeyWidthFull) :
+                ((colorKey + 1) * whiteKeyWidthFull - blackKeyWidth * 0.5f - whiteKeyGap * 0.5f);
+            float y = (1.0f - end) * space;
+            float w = isWhiteKey ? whiteKeyWidth : blackKeyWidth;
+            float h = (end - start) * space;
+            float border = w * 0.1f;
+
+            ds.FillRectangle(x, y, w, h, LookupNoteDarkerColor(track));
+            ds.FillRectangle(x + border, y + border, w - 2 * border, h - 2 * border, isWhiteKey ? LookupNoteColor(track) : LookupNoteDarkColor(track));
+
+            //
+            // This was me attempting to make rounded rectangles
+            //   ds.FillRoundedRectangle(x, y, w, h, Math.Min(h, 12.0f) / 2.0f, Math.Min(h, 12.0f) / 2.0f, isWhiteKey ? LookupNoteColor(track) : LookupNoteDarkColor(track));
+            //
+        }
+
+        /**
+         * Draws the piano.
+         */
+        private void DrawPiano(CanvasDrawingSession ds, int[] whiteKeysPressed, int[] pseudoBlackKeysPressed) {
+            float whiteKeyWidthFull = width / RendererViewModel.WhiteKeyCount;
+            float whiteKeyWidth = whiteKeyWidthFull - whiteKeyGap;
+            float blackKeyHeight = WhiteKeyHeight * blackKeyHeightRatio;
+            float blackKeyWidth = whiteKeyWidthFull * blackKeyWidthRatio;
+
+            // draw piano background
+            ds.FillRectangle(
+                0.0f,
+                PianoTopYCoordinate,
+                width,
+                WhiteKeyHeight,
+                Color.FromArgb(0xFF, 0x00, 0x00, 0x00)
+            );
+
+            // draw white keys
+            for (int i = 0; i < RendererViewModel.WhiteKeyCount; ++i) {
+                ds.FillRectangle(
+                    i * whiteKeyWidthFull,
+                    PianoTopYCoordinate,
+                    whiteKeyWidth,
+                    WhiteKeyHeight,
+                    LookupWhiteKeyBrush(whiteKeysPressed[i])
+                );
+            }
+
+            // draw black keys
+            for (int i = 0; i < RendererViewModel.PseudoBlackKeyCount; ++i) {
+                if (RendererViewModel.BlackKeyPositions[i]) {
+                    ds.FillRectangle(
+                        (i + 1) * whiteKeyWidthFull - blackKeyWidth * 0.5f - whiteKeyGap * 0.5f,
+                        PianoTopYCoordinate,
+                        blackKeyWidth,
+                        blackKeyHeight,
+                        LookupBlackKeyBrush(pseudoBlackKeysPressed[i])
+                    );
+                }
+            }
+
+            // draw signature red line
+            ds.FillRectangle(
+                0.0f,
+                PianoTopYCoordinate - SignatureRedLineHeight,
+                width,
+                SignatureRedLineHeight,
+                Color.FromArgb(0xFF, 0x50, 0x00, 0x00)
+            );
+        }
+
+        private void OnCanvasResize(object? sender, SizeChangedEventArgs e) {
+            width = (float)canvasSwapChainPanel.ActualWidth + whiteKeyGap; // note for myself
+            height = (float)canvasSwapChainPanel.ActualHeight;
+
+            canvasSwapChainPanel.SwapChain.ResizeBuffers(e.NewSize);
+
+            UpdateBrushes();
+        }
+
+        private void RecomputeFPS() {
+            ++frameCount;
+            if (fpsStopwatch.ElapsedMilliseconds >= 1000) {
+                fps = frameCount;
+                frameCount = 0;
+
+                fpsStopwatch.Restart();
+            }
+        }
+
+        private Color LookupNoteColor(int track) =>
+            noteColorLookup[track % noteColorLookup.Length];
+
+        private Color LookupNoteDarkColor(int track) =>
+            noteDarkColorLookup[track % noteDarkColorLookup.Length];
+
+        private Color LookupNoteDarkerColor(int track) =>
+            noteDarkerColorLookup[track % noteDarkerColorLookup.Length];
+
+        private CanvasLinearGradientBrush LookupWhiteKeyBrush(int track) =>
+            track == -1 ? whiteKeyBrush : pianoWhiteKeyBrushes[track % pianoWhiteKeyBrushes.Length];
+
+        private CanvasLinearGradientBrush LookupBlackKeyBrush(int track) =>
+            track == -1 ? blackKeyBrush : pianoBlackKeyBrushes[track % pianoBlackKeyBrushes.Length];
+
+        private static Color Darken(Color color, double factor = 0.75) {
+            return Color.FromArgb(
+                color.A,
+                (byte)(color.R * factor),
+                (byte)(color.G * factor),
+                (byte)(color.B * factor));
+        }
+
+        private void UpdateNoteColorLookup() {
+            noteColorLookup = new Color[Configurations.NoteColors.Count];
+            for (int i = 0; i < Configurations.NoteColors.Count; ++i) {
+                noteColorLookup[i] = (Color)ColorRGBToColorConverter.Convert(Configurations.NoteColors[i].ColorRGB, null!, null!, null!);
+            }
+        }
+
+        private void UpdateBrushes() {
+            whiteKeyBrush?.Dispose();
+            blackKeyBrush?.Dispose();
+            fadeBrush?.Dispose();
+            foreach (var brush in pianoWhiteKeyBrushes)
+                brush?.Dispose();
+            foreach (var brush in pianoBlackKeyBrushes)
+                brush?.Dispose();
+
+            float blackKeyHeight = WhiteKeyHeight * blackKeyHeightRatio;
+
+            var whiteKey = new CanvasGradientStop[] {
+                new() { Position = 0, Color = Color.FromArgb(0xFF, 0xFF, 0xFF, 0xFF) },
+                new() { Position = 1, Color = Color.FromArgb(0xFF, 0xD5, 0xD5, 0xD5) }
+            };
+            whiteKeyBrush = new CanvasLinearGradientBrush(canvasSwapChainPanel.SwapChain, whiteKey);
+            whiteKeyBrush.StartPoint = new Vector2(0.0f, height - WhiteKeyHeight);
+            whiteKeyBrush.EndPoint = new Vector2(0.0f, height);
+
+            var blackKey = new CanvasGradientStop[] {
+                new() { Position = 0, Color = Color.FromArgb(0xFF, 0x44, 0x44, 0x44) },
+                new() { Position = 1, Color = Color.FromArgb(0xFF, 0x02, 0x02, 0x02) }
+            };
+            blackKeyBrush = new CanvasLinearGradientBrush(canvasSwapChainPanel.SwapChain, blackKey);
+            blackKeyBrush.StartPoint = new Vector2(0.0f, height - WhiteKeyHeight);
+            blackKeyBrush.EndPoint = new Vector2(0.0f, height - WhiteKeyHeight + blackKeyHeight);
+
+            fadeBrush = new CanvasLinearGradientBrush(canvasSwapChainPanel.SwapChain, [
+                    new CanvasGradientStop { Position = 0f, Color = Color.FromArgb(255, 0, 0, 0) },
+                    new CanvasGradientStop { Position = 1f, Color = Color.FromArgb(0, 0, 0, 0) },
+                ]) {
+                StartPoint = new Vector2(0, 32),
+                EndPoint = new Vector2(0, 0)
+            };
+
+            noteDarkColorLookup = new Color[noteColorLookup.Length];
+            noteDarkerColorLookup = new Color[noteColorLookup.Length];
+            pianoWhiteKeyBrushes = new CanvasLinearGradientBrush[noteColorLookup.Length];
+            pianoBlackKeyBrushes = new CanvasLinearGradientBrush[noteColorLookup.Length];
+            for (int i = 0; i < noteColorLookup.Length; ++i) {
+                noteDarkColorLookup[i] = Darken(noteColorLookup[i], 0.75);
+                noteDarkerColorLookup[i] = Darken(noteColorLookup[i], 0.4);
+
+                pianoWhiteKeyBrushes[i] = new CanvasLinearGradientBrush(canvasSwapChainPanel.SwapChain, [
+                    new() { Position = 0, Color = noteColorLookup[i] },
+                    new() { Position = 1, Color = Darken(noteColorLookup[i], 0.8) }
+                ]);
+                pianoWhiteKeyBrushes[i].StartPoint = new Vector2(0.0f, height - WhiteKeyHeight);
+                pianoWhiteKeyBrushes[i].EndPoint = new Vector2(0.0f, height);
+
+                pianoBlackKeyBrushes[i] = new CanvasLinearGradientBrush(canvasSwapChainPanel.SwapChain, [
+                    new() { Position = 0, Color = noteDarkColorLookup[i] },
+                    new() { Position = 1, Color = Darken(noteDarkColorLookup[i], 0.8) }
+                ]);
+                pianoBlackKeyBrushes[i].StartPoint = new Vector2(0.0f, height - WhiteKeyHeight);
+                pianoBlackKeyBrushes[i].EndPoint = new Vector2(0.0f, height - WhiteKeyHeight + blackKeyHeight);
+            }
+
+            canvasTextFormat = new() { FontFamily = "Segoe UI Variable", FontSize = 20, FontWeight = new Windows.UI.Text.FontWeight(500) };
+            feedbackTextFormat = new() { FontFamily = "Segoe UI Variable", FontSize = 14, FontWeight = new Windows.UI.Text.FontWeight(500), HorizontalAlignment = CanvasHorizontalAlignment.Center, VerticalAlignment = CanvasVerticalAlignment.Center };
+        }
+    }
+}

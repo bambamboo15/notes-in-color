@@ -6,6 +6,7 @@
  * with some MIDI controller support.
  */
 
+using Melanchall.DryWetMidi.Common;
 using Melanchall.DryWetMidi.Interaction;
 
 namespace NotesInColor.Core;
@@ -18,13 +19,14 @@ public readonly record struct NoteData {
     public readonly int NoteNumber;
     public readonly int Velocity;
     public readonly int Track;
+    public readonly int Channel;
     public readonly long Time;
     public readonly long EndTime;
 
     public readonly static NoteData Null = new();
     public readonly bool IsNull => Track == -1;
 
-    public NoteData() : this(new(new()), TempoMap.Default, -1) {}
+    public NoteData() : this(new Note(new SevenBitNumber()), TempoMap.Default, -1) {}
 
     public NoteData(Note note, TempoMap tempoMap, int track) {
         Time = TimeConverter.ConvertTo<MetricTimeSpan>(note.Time, tempoMap).TotalMicroseconds;
@@ -32,5 +34,6 @@ public readonly record struct NoteData {
         Track = track;
         Velocity = note.Velocity;
         NoteNumber = note.NoteNumber;
+        Channel = note.Channel;
     }
 }

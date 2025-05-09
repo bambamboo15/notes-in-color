@@ -11,8 +11,4 @@
     <PackageReference Include="Melanchall.DryWetMidi" Version="7.2.0" />
   </ItemGroup>
 
-  <ItemGroup>
-    <ProjectReference Include="..\NotesInColor.Services\NotesInColor.Services.csproj" />
-  </ItemGroup>
-
 </Project>

@@ -15,11 +15,13 @@ public partial class MainPageViewModel(
     CommandsViewModel commandsViewModel,
     PlaythroughViewModel playthroughViewModel,
     PlaythroughInfoViewModel playthroughInfoViewModel,
-    AudioViewModel audioViewModel
+    AudioViewModel audioViewModel,
+    PracticeModeViewModel practiceModeViewModel
 ) : ObservableObject {
     public readonly CommandsViewModel CommandsViewModel = commandsViewModel;
     public readonly RendererViewModel RendererViewModel = rendererViewModel;
     public readonly PlaythroughViewModel PlaythroughViewModel = playthroughViewModel;
     public readonly PlaythroughInfoViewModel PlaythroughInfoViewModel = playthroughInfoViewModel;
     public readonly AudioViewModel AudioViewModel = audioViewModel;
+    public readonly PracticeModeViewModel PracticeModeViewModel = practiceModeViewModel;
 }
