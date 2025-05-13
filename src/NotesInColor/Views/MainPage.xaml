@@ -11,6 +11,7 @@
     xmlns:ui="using:CommunityToolkit.WinUI"
     xmlns:primitives="using:Microsoft.UI.Xaml.Controls.Primitives"
     mc:Ignorable="d"
+    NavigationCacheMode="Disabled"
     Background="Transparent">
 
     <Page.Resources>
@@ -40,23 +41,26 @@
                 </Grid.ColumnDefinitions>
 
                 <!-- Song name -->
-                <Grid HorizontalAlignment="Left" VerticalAlignment="Center" Grid.Column="0">
-                    <StackPanel HorizontalAlignment="Left" Orientation="Horizontal" Margin="32,0,0,0">
-                        <TextBlock VerticalAlignment="Center"
+                <Grid HorizontalAlignment="Left" VerticalAlignment="Center" Margin="32,0,0,0" Grid.Column="0">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="Auto" />
+                        <ColumnDefinition Width="*" />
+                    </Grid.ColumnDefinitions>
+                    <TextBlock VerticalAlignment="Center"
                                FontSize="22"
                                FontWeight="SemiBold"
                                Text="PRACTICE"
                                Margin="0,0,8,0"
-                               TextTrimming="CharacterEllipsis"
                                Opacity="0.5"
-                               Visibility="{x:Bind ViewModel.PracticeModeViewModel.PracticeMode, Converter={StaticResource BoolToVisibilityConverter}, Mode=OneWay}" />
-                        <TextBlock VerticalAlignment="Center"
+                               Visibility="{x:Bind ViewModel.PracticeModeViewModel.PracticeMode, Converter={StaticResource BoolToVisibilityConverter}, Mode=OneWay}"
+                               Grid.Column="0" />
+                    <TextBlock VerticalAlignment="Center"
                                FontSize="22"
                                FontWeight="SemiBold"
                                Text="{x:Bind ViewModel.PlaythroughInfoViewModel.Name, Mode=OneWay}"
                                TextTrimming="CharacterEllipsis"
-                               Opacity="{x:Bind conv:PlaythroughUIConverter.BoolToEnabledOpacity(ViewModel.PlaythroughViewModel.Enabled), Mode=OneWay}" />
-                    </StackPanel>
+                               Opacity="{x:Bind conv:PlaythroughUIConverter.BoolToEnabledOpacity(ViewModel.PlaythroughViewModel.Enabled), Mode=OneWay}"
+                               Grid.Column="1" />
                 </Grid>
 
                 <!-- Playthrough UI -->

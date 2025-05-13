@@ -44,7 +44,11 @@ public partial class CommandsViewModel(
         string? path = await RequestMIDIFile.OpenFile();
         if (path != null) {
             NoteAudioPlayer.AllNotesOff();
-            MIDIPlaythroughData.Load(MIDIFileData.Parse(path));
+            try {
+                MIDIPlaythroughData.Load(MIDIFileData.Parse(path));
+            } catch {
+                await TryToInitiateAndCompleteTheProcessOfShowingTheDisplayOfSomethingThatCouldBeCalledWhateverContentDialog.ShowSorrySomethingWentWrongFileLoadingDialog();
+            }
         }
 
         IsOpenFileButtonEnabled = true;
@@ -64,9 +68,14 @@ public partial class CommandsViewModel(
             string? path = await RequestMIDIFile.OpenFile();
             if (path != null) {
                 NoteAudioPlayer.AllNotesOff();
-                MIDIPlaythroughData.Load(MIDIFileData.Parse(path), true, false);
-                await TryToInitiateAndCompleteTheProcessOfShowingTheDisplayOfSomethingThatCouldBeCalledWhateverContentDialog.ShowAsyncJustBeforePracticeModeContentDialog();
-                MIDIPlaythroughData.Playing = true;
+                try {
+                    MIDIPlaythroughData.Load(MIDIFileData.Parse(path), true, false);
+                } catch {
+                    await TryToInitiateAndCompleteTheProcessOfShowingTheDisplayOfSomethingThatCouldBeCalledWhateverContentDialog.ShowSorrySomethingWentWrongFileLoadingDialog();
+                } finally {
+                    await TryToInitiateAndCompleteTheProcessOfShowingTheDisplayOfSomethingThatCouldBeCalledWhateverContentDialog.ShowAsyncJustBeforePracticeModeContentDialog();
+                    MIDIPlaythroughData.Playing = true;
+                }
             }
         } else {
             await TryToInitiateAndCompleteTheProcessOfShowingTheDisplayOfSomethingThatCouldBeCalledWhateverContentDialog.ShowAsyncSorryNoInputMIDIDeviceContentDialog();

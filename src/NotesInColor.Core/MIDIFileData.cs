@@ -10,6 +10,7 @@ using Melanchall.DryWetMidi.Core;
 using Melanchall.DryWetMidi.Interaction;
 using Melanchall.DryWetMidi.Multimedia;
 using System.Diagnostics;
+using System.IO;
 
 namespace NotesInColor.Core;
 
@@ -34,6 +35,10 @@ public record MIDIFileData(
             InvalidMetaEventParameterValuePolicy = InvalidMetaEventParameterValuePolicy.SnapToLimits
         });
 
+        return Parse(midiFile, Path.GetFileNameWithoutExtension(path));
+    }
+    
+    public static MIDIFileData Parse(MidiFile midiFile, string name) {
         TempoMap tempoMap = midiFile.GetTempoMap();
 
         int trackIndex = 0;
@@ -53,7 +58,7 @@ public record MIDIFileData(
             [.. notes.OrderBy(n => n.Time)],
             [.. nonNoteTimedEvents.OrderBy(e => e.Time)],
             midiFile.GetDuration<MetricTimeSpan>().TotalSeconds,
-            Path.GetFileNameWithoutExtension(path),
+            name,
             trackIndex);
     }
 }

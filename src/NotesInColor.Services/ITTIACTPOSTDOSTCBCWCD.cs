@@ -16,4 +16,5 @@ public interface ITryToInitiateAndCompleteTheProcessOfShowingTheDisplayOfSomethi
     public Task ShowAsyncInputDevicePropertiesContentDialog();
     public Task<bool> ShowAsyncJustBeforePracticeModeContentDialog();
     public Task ShowAsyncPracticeModeStatsContentDialog();
+    public Task ShowSorrySomethingWentWrongFileLoadingDialog();
 }

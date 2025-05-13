@@ -54,7 +54,7 @@ public partial class MIDIPlaythroughData : ObservableObject {
                 ReachedEnd();
         }
     }
-    private double progress = 0.0;
+    private double progress = -2.0; // NOTE: SAME AS WarmupTimeSeconds, USE CONSTRUCTOR INSTEAD
 
     /**
      * What is the duration of the song?

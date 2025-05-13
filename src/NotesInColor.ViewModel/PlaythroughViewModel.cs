@@ -98,6 +98,13 @@ public partial class PlaythroughViewModel : ObservableObject {
         this.MIDIPlaythroughData = MIDIPlaythroughData;
         this.NoteAudioPlayer = NoteAudioPlayer;
 
+        // this was added because a unit test failed!
+        Playing = MIDIPlaythroughData.Playing;
+        Progress = MIDIPlaythroughData.Progress;
+        Enabled = MIDIPlaythroughData.IsLoaded;
+        Duration = MIDIPlaythroughData.Duration;
+        EnabledNoPracticeMode = Enabled && !MIDIPlaythroughData.PracticeMode;
+
         // manual binding...
         MIDIPlaythroughData.PropertyChanged += (s, e) => {
             if (e.PropertyName == nameof(MIDIPlaythroughData.Playing)) {

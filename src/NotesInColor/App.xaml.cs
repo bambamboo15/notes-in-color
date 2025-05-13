@@ -48,6 +48,7 @@ namespace NotesInColor {
 
             Services = ConfigureServices();
             LoadSettings();
+            _ = ManageJumpList();
 
             // catch unhandled exceptions
             AppDomain.CurrentDomain.UnhandledException += OnUnhandledException;
@@ -152,6 +153,14 @@ namespace NotesInColor {
             Configurations configurations = Current.Services.GetService<Configurations>()!;
 
             settingsManager["theme"] ??= "auto";
+        }
+
+        private async Task ManageJumpList() {
+            if (JumpList.IsSupported()) {
+                JumpList jumpList = await JumpList.LoadCurrentAsync();
+                jumpList.Items.Clear();
+                await jumpList.SaveAsync();
+            }
         }
 
         void OnNavigationFailed(object sender, NavigationFailedEventArgs args) {

@@ -33,7 +33,7 @@ using Windows.UI.ViewManagement;
 
 namespace NotesInColor {
     public sealed partial class MainPage : Page {
-        public readonly MainPageViewModel ViewModel;
+        public MainPageViewModel ViewModel;
         private readonly UISettings UISettings = new();
 
         private readonly Stopwatch stopwatch = Stopwatch.StartNew();
@@ -109,6 +109,9 @@ namespace NotesInColor {
 
         protected override void OnNavigatedFrom(NavigationEventArgs e) {
             CompositionTarget.Rendering -= OnRendering;
+
+            // microsoft
+            //ViewModel = null!;
         }
 
         private void OnRendering(object? sender, object e) {

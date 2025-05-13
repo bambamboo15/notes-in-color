@@ -26,3 +26,6 @@ packages/
 
 # Ignore WinUI 3 specific files that are automatically generated
 App1.csproj.user
+
+# Too many MIDI files, put them yourself
+src/NotesInColor.UnitTests/MIDIFiles/*

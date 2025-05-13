@@ -60,10 +60,10 @@ namespace NotesInColor {
      *        - Do not depend on Configurations.StartKey and Configurations.EndKey
      */
     public sealed partial class RendererControl : UserControl {
-        private readonly RendererViewModel RendererViewModel;
-        private readonly PracticeModeViewModel PracticeModeViewModel;
-        private readonly Configurations Configurations;
-        private readonly ColorRGBToColorConverter ColorRGBToColorConverter;
+        private RendererViewModel RendererViewModel;
+        private PracticeModeViewModel PracticeModeViewModel;
+        private Configurations Configurations;
+        private ColorRGBToColorConverter ColorRGBToColorConverter;
 
         /**
          * Rendering properties
@@ -152,24 +152,50 @@ namespace NotesInColor {
             CanvasDevice device = CanvasDevice.GetSharedDevice();
             CanvasSwapChain swapChain = new CanvasSwapChain(device, 100.0f, 100.0f, 96);
             canvasSwapChainPanel.SwapChain = swapChain;
+
+            // loaded? unloaded?
+            Loaded += OnLoaded;
+            Unloaded += OnUnloaded;
+
+            // initialize expensive properties
+            UpdateNoteColorBrushFormatProperties();
+        }
+
+        private void OnLoaded(object s, RoutedEventArgs e) {
+            // notify whenever size changed
             canvasSwapChainPanel.SizeChanged += OnCanvasResize;
 
-            // trigger Update on every render, and load/unload it dynamically to avoid bugs
-            Loaded += (_, _) => CompositionTarget.Rendering += Update;
-            Unloaded += (_, _) => CompositionTarget.Rendering -= Update;
+            // trigger Update on every render
+            CompositionTarget.Rendering += Update;
 
-            // trigger OnNoteColorsCollectionChanged on every note color collection change, and load/unload it dynamically to avoid bugs
-            Loaded += (_, _) => Configurations.NoteColors.CollectionChanged += OnNoteColorsCollectionChanged;
-            Unloaded += (_, _) => Configurations.NoteColors.CollectionChanged -= OnNoteColorsCollectionChanged;
+            // trigger OnNoteColorsCollectionChanged on every note color collection change
+            Configurations.NoteColors.CollectionChanged += OnNoteColorsCollectionChanged;
 
             // on every feedback recieved, do something
             PracticeModeViewModel.Feedback += OnFeedback;
 
-            // initialize dimensions
-            Loaded += (_, _) => UpdateDimensions(new(canvasSwapChainPanel.ActualWidth, canvasSwapChainPanel.ActualHeight));
+            // update dimensions
+            UpdateDimensions(new(canvasSwapChainPanel.ActualWidth, canvasSwapChainPanel.ActualHeight));
+        }
 
-            // initialize expensive properties
-            UpdateNoteColorBrushFormatProperties();
+        private void OnUnloaded(object s, RoutedEventArgs e) {
+            canvasSwapChainPanel.SizeChanged -= OnCanvasResize;
+            canvasSwapChainPanel.SwapChain?.Dispose();
+            canvasSwapChainPanel.SwapChain = null;
+
+            CompositionTarget.Rendering -= Update;
+            Configurations.NoteColors.CollectionChanged -= OnNoteColorsCollectionChanged;
+            PracticeModeViewModel.Feedback -= OnFeedback;
+
+            // microsoft
+            //RendererViewModel = null!;
+            //PracticeModeViewModel = null!;
+            //Configurations = null!;
+            //ColorRGBToColorConverter = null!;
+        }
+
+        ~RendererControl() {
+            Debug.WriteLine("this should be called");
         }
 
         /**
@@ -240,8 +266,8 @@ namespace NotesInColor {
             blackKeyHeight = whiteKeyHeight * blackKeyHeightRatio;
             blackKeyWidth = whiteKeyWidthFull * blackKeyWidthRatio;
 
-            signatureRedLineHeight = pianoEase * 3.75f;
-            emptySpace = Math.Clamp((1.0f - pianoEase) * (whiteKeyHeight + 16) + height - whiteKeyHeight, 0.0f, height);
+            signatureRedLineHeight = pianoEase * 3.75f * (whiteKeyHeight / 128.0f);
+            emptySpace = Math.Clamp((1.0f - pianoEase) * (whiteKeyHeight + 16) + height - whiteKeyHeight - signatureRedLineHeight, 0.0f, height);
 
             // If the white key width changed, then only then do all of these allocations
             if (oldWhiteKeyWidthFull != whiteKeyWidthFull) {
@@ -334,6 +360,8 @@ namespace NotesInColor {
          * Draws the piano.
          */
         private void DrawPiano(CanvasDrawingSession ds) {
+            float emptySpace = this.emptySpace + signatureRedLineHeight;
+
             // draw piano background
             ds.FillRectangle(
                 0.0f,
@@ -382,7 +410,7 @@ namespace NotesInColor {
                 0.0f,
                 emptySpace - signatureRedLineHeight,
                 width,
-                signatureRedLineHeight,
+                signatureRedLineHeight + 1, // 1 pixel higher because of artifacts
                 Color.FromArgb(0xFF, 0x50, 0x00, 0x00)
             );
         }
@@ -485,6 +513,7 @@ namespace NotesInColor {
          */
         private void OnCanvasResize(object? sender, SizeChangedEventArgs args) {
             UpdateDimensions(args.NewSize);
+            RecomputeProperties();
             UpdateNoteColorBrushFormatProperties();
         }
 
@@ -557,7 +586,7 @@ namespace NotesInColor {
             whiteKeyBrush.EndPoint = new Vector2(0.0f, height);
 
             var blackKey = new CanvasGradientStop[] {
-                new() { Position = 0, Color = Color.FromArgb(0xFF, 0x44, 0x44, 0x44) },
+                new() { Position = 0, Color = Color.FromArgb(0xFF, 0x30, 0x30, 0x30) },
                 new() { Position = 1, Color = Color.FromArgb(0xFF, 0x02, 0x02, 0x02) }
             };
             blackKeyBrush = new CanvasLinearGradientBrush(canvasSwapChainPanel.SwapChain, blackKey);

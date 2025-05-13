@@ -42,6 +42,10 @@ public class TryToInitiateAndCompleteTheProcessOfShowingTheDisplayOfSomethingTha
         _ = await Show(PracticeModeStatsDialog.CreateContentDialog());
     }
 
+    public async Task ShowSorrySomethingWentWrongFileLoadingDialog() {
+        _ = await Show(SorrySomethingWentWrongFileLoadingDialog.CreateContentDialog());
+    }
+
     /**
      * Shows a ContentDialog.
      */

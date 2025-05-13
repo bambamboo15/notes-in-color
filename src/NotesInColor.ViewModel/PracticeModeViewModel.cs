@@ -32,7 +32,11 @@ public partial class PracticeModeViewModel : ObservableObject {
     /**
      * Is the application currently in practice mode?
      */
-    public bool PracticeMode => PracticeModeModel.PracticeMode;
+    public bool PracticeMode {
+        get => practiceMode;
+        set => SetProperty(ref practiceMode, value);
+    }
+    private bool practiceMode;
 
     /**
      * Statistics
@@ -53,6 +57,7 @@ public partial class PracticeModeViewModel : ObservableObject {
         this.InputDeviceManager.InputMessageReceived += OnIDMInputMessageRecieved;
         this.PracticeModeModel.Feedback += OnPMMFeedback;
         this.MIDIPlaythroughData.PropertyChanged += OnMPDPropertyChanged;
+        this.MIDIPlaythroughData.OnLoaded += OnMPDLoaded;
     }
 
     /**
@@ -101,5 +106,12 @@ public partial class PracticeModeViewModel : ObservableObject {
                 await DialogPresenter.ShowAsyncPracticeModeStatsContentDialog();
             }
         }
+    }
+
+    /**
+     * This method should be called whenever a composition loads.
+     */
+    private void OnMPDLoaded() {
+        PracticeMode = PracticeModeModel.PracticeMode;
     }
 }

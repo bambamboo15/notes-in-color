@@ -36,7 +36,7 @@ namespace NotesInColor {
      */
     public sealed partial class SettingsPage : Page {
         public SettingsPageViewModel ViewModel { get; private set; } = App.Current.Services.GetRequiredService<SettingsPageViewModel>(); // anti-pattern :(
-        private readonly ISettingsManager settingsManager = App.Current.Services.GetRequiredService<ISettingsManager>(); // more anti-pattern :(
+        private ISettingsManager settingsManager = App.Current.Services.GetRequiredService<ISettingsManager>(); // more anti-pattern :(
 
         public SettingsPage() {
             this.InitializeComponent();
@@ -49,19 +49,18 @@ namespace NotesInColor {
                 _ => throw new NotImplementedException("that wasn't supposed to happen")
             };
 
-            // random XAML binding initialization timing issue caused me to do this.
+            // random XAML binding initialization timing issue caused me to do this
             Loaded += OnLoaded;
 
-            // manual binding :/
-            ViewModel.PropertyChanged += (object? sender, PropertyChangedEventArgs e) => {
-                if (e.PropertyName == nameof(ViewModel.StartWhiteKey)) {
-                    startWhiteKeyComboBox.SelectedIndex = ViewModel.StartWhiteKey;
-                } else if (e.PropertyName == nameof(ViewModel.EndWhiteKey)) {
-                    endWhiteKeyComboBox.SelectedIndex = ViewModel.EndWhiteKey;
-                }
-            };
-
             DataContext = this;
+        }
+
+        private void OnVMPropertyChanged(object? sender, PropertyChangedEventArgs e) {
+            if (e.PropertyName == nameof(ViewModel.StartWhiteKey)) {
+                startWhiteKeyComboBox.SelectedIndex = ViewModel.StartWhiteKey;
+            } else if (e.PropertyName == nameof(ViewModel.EndWhiteKey)) {
+                endWhiteKeyComboBox.SelectedIndex = ViewModel.EndWhiteKey;
+            }
         }
 
         private void OnLoaded(object? sender, object e) {
@@ -70,6 +69,16 @@ namespace NotesInColor {
 
             startWhiteKeyComboBox.SelectedIndex = ViewModel.StartWhiteKey;
             endWhiteKeyComboBox.SelectedIndex = ViewModel.EndWhiteKey;
+
+            // manual binding :/
+            ViewModel.PropertyChanged += OnVMPropertyChanged;
+        }
+
+        protected override void OnNavigatedFrom(NavigationEventArgs e) {
+            ViewModel.PropertyChanged -= OnVMPropertyChanged;
+
+            ViewModel = null!;
+            settingsManager = null!;
         }
 
         // user wants to change app theme

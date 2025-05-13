@@ -13,6 +13,7 @@
     xmlns:system="using:System"
     mc:Ignorable="d"
     x:Name="RootPage"
+    NavigationCacheMode="Disabled"
     Background="Transparent">
 
     <Page.Resources>
@@ -98,7 +99,7 @@
                                            Header="Customize note colors"
                                            HeaderIcon="{ui:FontIcon Glyph=&#xE8A9;}">
                     <controls:SettingsExpander.Items>
-                        <controls:SettingsCard Header="Choose one of our themes!">
+                        <controls:SettingsCard Header="Reset back to default theme">
                             <Button Content="Notes in Color theme"
                                         Click="ApplyNotesInColorTheme"
                                         HorizontalAlignment="Right" Grid.Column="1" />
