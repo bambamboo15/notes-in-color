@@ -68,11 +68,6 @@ namespace NotesInColor {
         private static ServiceProvider ConfigureServices() {
             var services = new ServiceCollection();
 
-            services.AddSingleton<MainWindow>();
-            services.AddSingleton<RendererControl>();
-            //services.AddSingleton<MainPage>();
-            //services.AddSingleton<SettingsPage>();
-
             services.AddSingleton<MainWindowViewModel>();
             services.AddSingleton<MainPageViewModel>();
             services.AddSingleton<RendererViewModel>();

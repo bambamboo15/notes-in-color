@@ -188,10 +188,13 @@ namespace NotesInColor {
             PracticeModeViewModel.Feedback -= OnFeedback;
 
             // microsoft
-            //RendererViewModel = null!;
-            //PracticeModeViewModel = null!;
-            //Configurations = null!;
-            //ColorRGBToColorConverter = null!;
+            RendererViewModel = null!;
+            PracticeModeViewModel = null!;
+            Configurations = null!;
+            ColorRGBToColorConverter = null!;
+
+            Loaded -= OnLoaded;
+            Unloaded -= OnUnloaded;
         }
 
         ~RendererControl() {

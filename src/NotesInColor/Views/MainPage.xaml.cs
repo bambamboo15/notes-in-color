@@ -111,7 +111,7 @@ namespace NotesInColor {
             CompositionTarget.Rendering -= OnRendering;
 
             // microsoft
-            //ViewModel = null!;
+            ViewModel = null!;
         }
 
         private void OnRendering(object? sender, object e) {
